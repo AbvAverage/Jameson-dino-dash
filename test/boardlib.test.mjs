@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { mergeBoard, emptyBoard } from '../lib/boardlib.mjs';
+const b0 = emptyBoard();
+assert.equal(b0.players.chris.best, 6742);
+const b1 = mergeBoard(b0, { players: { addy: { best: 1200, games: 1, last: 1200, lastAt: '2026-10-29T04:00:00.000Z', bestAt: '2026-10-29T04:00:00.000Z' } } });
+assert.equal(b1.players.addy.best, 1200);
+const b2 = mergeBoard(b1, { players: { addy: { best: 900, games: 2, last: 900 } } });
+assert.equal(b2.players.addy.best, 1200, 'a lower score never replaces a best');
+assert.equal(b2.players.addy.last, 900);
+assert.equal(mergeBoard(b2, { players: { hacker: { best: 1 } } }), null, 'unknown players ignored');
+const b3 = mergeBoard(b2, { players: { aurora: { bolts: 40, owned: ['dino', 'nope'], outfit: 'dino', ride: false } } });
+assert.deepEqual(b3.players.aurora.owned, ['dino']);
+assert.equal(b3.players.aurora.outfit, 'dino');
+assert.equal(mergeBoard(b3, { players: { chris: { best: 'lots' } } }).players.chris.best, 6742);
+console.log('boardlib tests passed');
