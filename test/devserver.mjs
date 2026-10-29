@@ -9,7 +9,7 @@ const blobs = new BlobsServer({ directory: dir, token: 'tok', port: 8898 });
 await blobs.start();
 process.env.NETLIFY_BLOBS_CONTEXT = Buffer.from(JSON.stringify({ edgeURL: 'http://localhost:8898', uncachedEdgeURL: 'http://localhost:8898', siteID: 'site1', token: 'tok' })).toString('base64');
 const { default: handler } = await import('../netlify/functions/board.mjs');
-const page = fs.readFileSync(new URL('../public/index.html', import.meta.url));
+const page = fs.readFileSync(new URL('../public/play/index.html', import.meta.url));
 http.createServer(async (req, res) => {
   try {
     if (req.url.startsWith('/api/board')) {
