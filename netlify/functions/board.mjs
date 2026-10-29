@@ -33,7 +33,10 @@ export default async (req) => {
     try {
       return await save(store, body);
     } finally {
-      if (lock) await store.delete('lock').catch(() => {});
+      if (lock) {
+        const held = await store.get('lock', { type: 'json' }).catch(() => null);
+        if (held && held.me === lock) await store.delete('lock').catch(() => {});
+      }
     }
   });
   chain = run.catch(() => {});
@@ -46,7 +49,13 @@ async function takeLock(store) {
   const me = Math.random().toString(36).slice(2);
   for (let i = 0; i < 60; i++) {
     const res = await store.setJSON('lock', { me, at: Date.now() }, { onlyIfNew: true });
-    if (res && res.modified) return me;
+    if (res && res.modified) {
+      // double-check we really hold it (two saves can't both win, even on slower storage)
+      await new Promise((r) => setTimeout(r, 30));
+      const now = await store.get('lock', { type: 'json' }).catch(() => null);
+      if (now && now.me === me) return me;
+      continue;
+    }
     const held = await store.get('lock', { type: 'json' }).catch(() => null);
     if (held && Date.now() - held.at > 4000) await store.delete('lock').catch(() => {}); // a save that crashed
     await new Promise((r) => setTimeout(r, 40 + Math.random() * 60));

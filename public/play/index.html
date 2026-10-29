@@ -335,9 +335,13 @@ button.go {
 .chip:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
 .card.start { max-width: 540px; }
 .card.start .col-main { gap: 7px; }
-.card.start .chips { flex-wrap: wrap; justify-content: center; }
+.namebox { font-family: var(--body); font-weight: 700; font-size: 20px; color: var(--navy); text-align: center; width: min(280px, 100%); padding: 8px 14px; border: 3px solid var(--navy); border-radius: 14px; background: #fff; box-shadow: inset 0 2px 0 rgba(11, 42, 91, 0.12); }
+.namebox::placeholder { color: #7A8AA6; font-weight: 500; }
+.namebox:focus { outline: 3px solid var(--orange); outline-offset: 2px; }
+button.go:disabled, button.shopbtn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; transform: none; }
 .card.start .startrow { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; }
 @media (max-height: 760px) { .card.start img { width: 60px; } }
+@media (max-height: 600px) { .card.start .legend { display: none; } }
 .col-main { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 9px; }
 @media (max-width: 640px), (max-height: 600px) { .card.start img, .card.start .intro { display: none; } }
 @media (max-height: 600px) { .card h2 { font-size: 26px; } .card { padding: 12px 16px; gap: 7px; } }
@@ -416,8 +420,8 @@ button.go:focus-visible { outline: 4px solid var(--orange); outline-offset: 3px;
         <h2>Help Jameson run!</h2>
         <p class="intro">Jump the toy blocks. Grab the lightning orb to blast them.</p>
         <div class="legend"><span>Dino +5</span><span>Truck +3</span><span class="zap">Boom +2 a block</span></div>
-        <p class="who" id="whoLabel">Who's playing?</p>
-        <div class="chips" id="chips" role="group" aria-labelledby="whoLabel"></div>
+        <label class="who" for="nameInput">Who's playing?</label>
+        <input class="namebox" id="nameInput" type="text" maxlength="16" placeholder="Type your name" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="go">
         <div class="startrow"><button class="go" id="startBtn" type="button">Play</button>
         <button class="shopbtn" id="shopBtnStart" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="#FFD23F" stroke="#7A3E00" stroke-width="1.6" stroke-linejoin="round"></path></svg>Dino Shop</button></div>
       </div>
@@ -461,7 +465,7 @@ button.go:focus-visible { outline: 4px solid var(--orange); outline-offset: 3px;
       <p class="newbest" id="newBest" hidden>New best for <span id="newBestName"></span>!</p>
       <p>Score <b id="finalScore">0</b> · Dinos <b id="finalDinos">0</b> · Trucks <b id="finalTrucks">0</b> · Blocks blasted <b id="finalBlasts">0</b></p>
       <button class="go" id="againBtn" type="button">Play again</button>
-      <div class="row2"><button class="shopbtn" id="shopBtnOver" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="#FFD23F" stroke="#7A3E00" stroke-width="1.6" stroke-linejoin="round"></path></svg>Dino Shop</button><button class="link" id="switchBtn" type="button">Switch player</button></div>
+      <div class="row2"><button class="shopbtn" id="shopBtnOver" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="#FFD23F" stroke="#7A3E00" stroke-width="1.6" stroke-linejoin="round"></path></svg>Dino Shop</button><button class="link" id="switchBtn" type="button">Change name</button></div>
     </div>
   </div>
 </div>
@@ -2471,44 +2475,54 @@ var OBSART = (function () {
   window.addEventListener('resize', resize);
 
   // ---------- players and saving ----------
-  var PLAYERS = [
-    { id: 'chris', name: 'Chris' },
-    { id: 'maggie', name: 'Maggie' },
-    { id: 'addy', name: 'Addy' },
-    { id: 'aurora', name: 'Aurora' },
-    { id: 'jameson', name: 'Jameson' }
-  ];
+  // The five family names keep their usual spelling; anyone else is saved under the name they type.
+  var KNOWN = { chris: 'Chris', maggie: 'Maggie', addy: 'Addy', aurora: 'Aurora', jameson: 'Jameson' };
+  var names = {};
+  Object.keys(KNOWN).forEach(function (k) { names[k] = KNOWN[k]; });
+  function cleanName(n) { return String(n || '').replace(/[^\p{L}\p{N} '\u2019.-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 16); }
+  function slugOf(n) { return cleanName(n).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 20).replace(/-+$/, ''); }
   var BOARD_DOC = 'board/family';
   var board = {};          // id -> {best, games, last, lastAt, bestAt}
   var shared = false;      // true once the family board has loaded
   var canSave = true;      // false after the store refuses a write
   var dbRef = null;
-  var current = 'chris';
-  try { var saved = localStorage.getItem('jameson-player'); if (PLAYERS.some(function (p) { return p.id === saved; })) current = saved; } catch (e) {}
+  var current = '';
+  function setPlayerName(n) {
+    var clean = cleanName(n), id = slugOf(clean);
+    current = id;
+    if (id) names[id] = KNOWN[id] || clean;
+    return !!id;
+  }
+  try {
+    var savedName = localStorage.getItem('jameson-name');
+    var savedId = localStorage.getItem('jameson-player');
+    if (savedName) setPlayerName(savedName);
+    else if (savedId && KNOWN[savedId]) setPlayerName(KNOWN[savedId]); // devices that picked a name button before
+  } catch (e) {}
   try { var lb = JSON.parse(localStorage.getItem('jameson-board') || '{}'); if (lb && typeof lb === 'object') board = lb; } catch (e) {}
 
-  function nameOf(id) { for (var i = 0; i < PLAYERS.length; i++) if (PLAYERS[i].id === id) return PLAYERS[i].name; return id; }
+  function nameOf(id) { return names[id] || id; }
   function bestOf(id) { var r = board[id]; return r && typeof r.best === 'number' ? r.best : 0; }
 
-  var chipsEl = document.getElementById('chips');
-  PLAYERS.forEach(function (p) {
-    var b = document.createElement('button');
-    b.type = 'button'; b.className = 'chip'; b.id = 'chip-' + p.id; b.textContent = p.name;
-    b.addEventListener('click', function () {
-      current = p.id;
-      try { localStorage.setItem('jameson-player', current); } catch (e) {}
-      renderBoard();
-    });
-    chipsEl.appendChild(b);
+  var nameInput = document.getElementById('nameInput');
+  nameInput.value = current ? nameOf(current) : '';
+  nameInput.addEventListener('input', function () {
+    setPlayerName(nameInput.value);
+    try { localStorage.setItem('jameson-name', cleanName(nameInput.value)); } catch (e) {}
+    renderBoard();
   });
+  nameInput.addEventListener('keydown', function (e) {
+    e.stopPropagation(); // typing a space should not make Jameson jump
+    if (e.key === 'Enter') { e.preventDefault(); if (current) start(); }
+  });
+  nameInput.addEventListener('blur', function () { if (current) nameInput.value = nameOf(current); });
 
   function renderBoard() {
-    PLAYERS.forEach(function (p) {
-      var b = document.getElementById('chip-' + p.id);
-      if (b) b.setAttribute('aria-pressed', p.id === current ? 'true' : 'false');
-    });
-    bestEl.textContent = bestOf(current);
-    document.getElementById('startBtn').textContent = 'Play as ' + nameOf(current);
+    bestEl.textContent = current ? bestOf(current) : 0;
+    var sb = document.getElementById('startBtn');
+    sb.textContent = current && nameOf(current).length <= 10 ? 'Play as ' + nameOf(current) : 'Play';
+    sb.disabled = !current;
+    document.getElementById('shopBtnStart').disabled = !current;
     renderBolts();
   }
   renderBoard();
@@ -2554,7 +2568,7 @@ var OBSART = (function () {
         var patch = { players: {}, updatedAt: now };
         patch.players[id] = rec;
         if (!snap.exists) {
-          PLAYERS.forEach(function (p) { if (!patch.players[p.id]) patch.players[p.id] = { name: p.name, best: 0, games: 0 }; });
+          Object.keys(KNOWN).forEach(function (k) { if (!patch.players[k]) patch.players[k] = { name: KNOWN[k], best: 0, games: 0 }; });
           return dbRef.set(patch);
         }
         return dbRef.update(patch);
@@ -2573,6 +2587,7 @@ var OBSART = (function () {
   function enqueue(op) {
     op.opId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
     op.at = new Date().toISOString();
+    if (op.id && !op.name) op.name = nameOf(op.id);
     queue.push(op); saveQueue(); flushQueue();
   }
   function pendingFor(id) { for (var i = 0; i < queue.length; i++) if (queue[i].id === id) return true; return false; }
@@ -2612,8 +2627,12 @@ var OBSART = (function () {
         shared = true;
         var players = snap.exists ? ((snap.data() || {}).players || {}) : {};
         var next = {};
-        PLAYERS.forEach(function (p) {
-          var r = players[p.id];
+        var ids = Object.keys(players);
+        Object.keys(board).forEach(function (k) { if (ids.indexOf(k) < 0) ids.push(k); });
+        ids.forEach(function (id) {
+          var p = { id: id };
+          var r = players[id];
+          if (r && r.name && !KNOWN[id] && id !== current) names[id] = r.name;
           var mine = board[p.id];
           if (useOps && mine && pendingFor(p.id)) {
             // this device has saves still on the way: keep showing them
@@ -2647,6 +2666,7 @@ var OBSART = (function () {
   var dirty = {};
   try { var lw = JSON.parse(localStorage.getItem('jameson-wallets') || '{}'); if (lw && typeof lw === 'object') wallets = lw; } catch (e) {}
   function wal(id) {
+    if (!id) return { bolts: 0, owned: [], outfit: 'truck', ride: false }; // nobody has typed a name yet
     var w = wallets[id];
     if (!w || typeof w !== 'object') w = wallets[id] = { bolts: 0, owned: [], outfit: 'truck', ride: false };
     if (!Array.isArray(w.owned)) w.owned = [];
@@ -2674,7 +2694,8 @@ var OBSART = (function () {
   }
   function adoptWallets(players) {
     if (!canSave) return;
-    PLAYERS.forEach(function (p) {
+    Object.keys(players).forEach(function (pid) {
+      var p = { id: pid };
       var r = players[p.id];
       if (dirty[p.id] || (p.id === current && mode === 'bonus') || (useOps && pendingFor(p.id))) return;
       if (r && typeof r.bolts === 'number') wallets[p.id] = { bolts: r.bolts, owned: Array.isArray(r.owned) ? r.owned.slice() : [], outfit: r.outfit || 'truck', ride: !!r.ride };
@@ -2846,6 +2867,7 @@ var OBSART = (function () {
   }
 
   function start() {
+    if (!current) { startPanel.hidden = false; nameInput.focus(); return; }
     SFX.unlock();
     SFX.play('click');
     state = 'play';
@@ -2930,7 +2952,7 @@ var OBSART = (function () {
     state = 'ready';
     overPanel.hidden = true;
     startPanel.hidden = false;
-    var b = document.getElementById('chip-' + current); if (b) b.focus();
+    setTimeout(function () { nameInput.focus(); nameInput.select(); }, 30);
   });
   canvas.addEventListener('pointerdown', function (e) { e.preventDefault(); jump(); });
   blastBtn.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); blast(); });

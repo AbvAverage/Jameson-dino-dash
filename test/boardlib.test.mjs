@@ -43,3 +43,26 @@ assert.equal(legacy.players.addy.bolts, b.players.addy.bolts);
 assert.deepEqual(legacy.players.addy.owned, ['dino']);
 assert.equal(publicBoard(b).seen, undefined);
 console.log('action tests passed');
+
+// ---- typed names ----
+{
+  const { applyOp, emptyBoard, MAX_PLAYERS } = await import('../lib/boardlib.mjs');
+  let b = emptyBoard();
+  let r = applyOp(b, { type: 'run', id: 'big-dawg', name: 'Big Dawg', score: 120, opId: 'n1aaaa' });
+  assert.equal(r.error, null); assert.equal(r.board.players['big-dawg'].name, 'Big Dawg'); assert.equal(r.board.players['big-dawg'].best, 120);
+  b = r.board;
+  r = applyOp(b, { type: 'run', id: 'chris', name: 'CHRIS', score: 5, opId: 'n2aaaa' });
+  assert.equal(r.board.players.chris.name, 'Chris', 'family names keep their spelling');
+  assert.equal(r.board.players.chris.best, 6742, 'typing Chris keeps his saved best');
+  r = applyOp(b, { type: 'run', id: 'Bad Id!', name: 'x', score: 5, opId: 'n3aaaa' });
+  assert.equal(r.error, 'unknown_player');
+  r = applyOp(b, { type: 'run', id: 'sam', name: '<b>Sam</b>', score: 5, opId: 'n4aaaa' });
+  assert.equal(r.board.players.sam.name, 'bSamb', 'markup stripped from names');
+  let full = emptyBoard();
+  for (let i = 0; Object.keys(full.players).length < MAX_PLAYERS; i++) full = applyOp(full, { type: 'run', id: 'p' + i, name: 'P' + i, score: 1, opId: 'f' + i + 'xxxx' }).board;
+  r = applyOp(full, { type: 'run', id: 'one-more', name: 'One More', score: 1, opId: 'fullxx' });
+  assert.equal(r.error, 'unknown_player', 'board stops at MAX_PLAYERS');
+  r = applyOp(full, { type: 'run', id: 'chris', name: 'Chris', score: 1, opId: 'fullyy' });
+  assert.equal(r.error, null, 'existing players still save when full');
+  console.log('name tests passed');
+}
