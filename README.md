@@ -32,7 +32,7 @@ To try the whole site locally (landing page, game and score board): `node test/s
 
 ## Rolling back
 
-The git tag `game-v1-before-landing` is the site exactly as it was before the landing page (game at `/`).
+Commit `a51ce2e` on `main` is the site exactly as it was before the landing page (game at `/`).
 
 ## Tests
 
