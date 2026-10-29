@@ -20,12 +20,13 @@ with sync_playwright() as p:
     a = board()['players']['addy']
     check('Addy\'s run saved from the tablet', a['games'] == 1 and a['best'] > 0, a)
     ph=phone.new_page(); ph.goto(U); ph.wait_for_timeout(1500)
-    check('phone shows Addy\'s score', str(a['best']) in ph.inner_text('#boardStart'))
+    ph.click('#chip-addy'); ph.wait_for_timeout(300)
+    check('phone shows Addy\'s best', ph.inner_text('#best') == str(a['best']), ph.inner_text('#best'))
+    check('no scoreboard on screen', ph.evaluate("document.querySelectorAll('.board, #boardStart, #boardOver').length") == 0)
     # 2. Aurora plays while the tablet is offline, then it reconnects
     t.click('#switchBtn'); t.click('#chip-aurora'); tablet.set_offline(True)
     run_until_over(t); t.wait_for_timeout(1500)
-    note = t.inner_text('#boardOver')
-    check('offline message shows', 'Offline right now' in note, note.split('\n')[-1])
+    check('offline run held on the tablet', t.evaluate('__jd.queue().length') > 0)
     check('nothing reached the server while offline', board()['players']['aurora']['games'] == 0)
     tablet.set_offline(False); t.evaluate("window.dispatchEvent(new Event('online'))"); t.wait_for_timeout(2500)
     au = board()['players']['aurora']

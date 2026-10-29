@@ -333,10 +333,12 @@ button.go {
 }
 .chip[aria-pressed="true"] { background: var(--sun); box-shadow: 0 3px 0 var(--navy); }
 .chip:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
-.card.start { max-width: 640px; flex-direction: row; align-items: center; gap: 20px; }
+.card.start { max-width: 540px; }
+.card.start .col-main { gap: 7px; }
+.card.start .chips { flex-wrap: wrap; justify-content: center; }
+.card.start .startrow { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; }
+@media (max-height: 760px) { .card.start img { width: 60px; } }
 .col-main { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 9px; }
-.card.start .board { flex: 1 1 230px; min-width: 0; }
-@media (max-width: 640px) { .card.start { flex-direction: column; max-width: 380px; } .card.start .board { flex: none; } }
 @media (max-width: 640px), (max-height: 600px) { .card.start img, .card.start .intro { display: none; } }
 @media (max-height: 600px) { .card h2 { font-size: 26px; } .card { padding: 12px 16px; gap: 7px; } }
 @media (max-width: 640px) {
@@ -346,28 +348,6 @@ button.go {
   .card.start .legend { display: none; }
   button.go { font-size: 24px; min-height: 48px; padding: 8px 22px 5px; }
 }
-.board { width: 100%; display: flex; flex-direction: column; gap: 3px; }
-.board h3 { margin: 0 0 2px; font-family: var(--display); font-weight: 400; font-size: 18px; letter-spacing: 1px; color: #1C7FD6; }
-.board ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
-.board li {
-  display: grid;
-  grid-template-columns: 26px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 10px;
-  border-radius: 10px;
-  background: #F2F7FD;
-  font-weight: 600;
-  font-size: 15px;
-  text-align: left;
-}
-.board li.lead { background: #FFF3C2; }
-.board li.me { outline: 2px solid var(--navy); }
-.board .rank { font-family: var(--display); font-size: 17px; color: #1C7FD6; text-align: center; }
-.board li.lead .rank { color: #C98E10; }
-.board .pts { font-variant-numeric: tabular-nums; font-weight: 700; }
-.board .none { color: #5B6B86; font-weight: 500; }
-.board .note { margin: 2px 0 0; font-size: 12.5px; font-weight: 500; color: #4A5C7A; }
 .newbest { margin: 0; font-family: var(--display); font-size: 20px; letter-spacing: 1px; color: #1C7FD6; }
 button.link {
   font-family: var(--body);
@@ -438,10 +418,9 @@ button.go:focus-visible { outline: 4px solid var(--orange); outline-offset: 3px;
         <div class="legend"><span>Dino +5</span><span>Truck +3</span><span class="zap">Boom +2 a block</span></div>
         <p class="who" id="whoLabel">Who's playing?</p>
         <div class="chips" id="chips" role="group" aria-labelledby="whoLabel"></div>
-        <button class="go" id="startBtn" type="button">Play</button>
-        <button class="shopbtn" id="shopBtnStart" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="#FFD23F" stroke="#7A3E00" stroke-width="1.6" stroke-linejoin="round"></path></svg>Dino Shop</button>
+        <div class="startrow"><button class="go" id="startBtn" type="button">Play</button>
+        <button class="shopbtn" id="shopBtnStart" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="#FFD23F" stroke="#7A3E00" stroke-width="1.6" stroke-linejoin="round"></path></svg>Dino Shop</button></div>
       </div>
-      <div class="board" id="boardStart"></div>
     </div>
   </div>
 
@@ -483,7 +462,6 @@ button.go:focus-visible { outline: 4px solid var(--orange); outline-offset: 3px;
       <p>Score <b id="finalScore">0</b> · Dinos <b id="finalDinos">0</b> · Trucks <b id="finalTrucks">0</b> · Blocks blasted <b id="finalBlasts">0</b></p>
       <button class="go" id="againBtn" type="button">Play again</button>
       <div class="row2"><button class="shopbtn" id="shopBtnOver" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="#FFD23F" stroke="#7A3E00" stroke-width="1.6" stroke-linejoin="round"></path></svg>Dino Shop</button><button class="link" id="switchBtn" type="button">Switch player</button></div>
-      <div class="board" id="boardOver"></div>
     </div>
   </div>
 </div>
@@ -2492,7 +2470,7 @@ var OBSART = (function () {
   }
   window.addEventListener('resize', resize);
 
-  // ---------- family leaderboard ----------
+  // ---------- players and saving ----------
   var PLAYERS = [
     { id: 'chris', name: 'Chris' },
     { id: 'maggie', name: 'Maggie' },
@@ -2524,37 +2502,11 @@ var OBSART = (function () {
     chipsEl.appendChild(b);
   });
 
-  function renderBoardInto(el) {
-    var rows = PLAYERS.map(function (p) { return { id: p.id, name: p.name, best: bestOf(p.id), games: (board[p.id] && board[p.id].games) || 0 }; });
-    rows.sort(function (a, b) { return b.best - a.best || a.name.localeCompare(b.name); });
-    var h = document.createElement('h3'); h.textContent = 'Family high scores';
-    var ol = document.createElement('ol');
-    rows.forEach(function (r, i) {
-      var li = document.createElement('li');
-      if (i === 0 && r.best > 0) li.classList.add('lead');
-      if (r.id === current) li.classList.add('me');
-      var rank = document.createElement('span'); rank.className = 'rank'; rank.textContent = r.best > 0 ? String(i + 1) : '–';
-      var nm = document.createElement('span'); nm.textContent = r.name + (i === 0 && r.best > 0 ? ' (leader)' : '');
-      var pts = document.createElement('span'); pts.className = 'pts';
-      if (r.best > 0) pts.textContent = r.best; else { pts.textContent = 'not played'; pts.classList.add('none'); }
-      li.appendChild(rank); li.appendChild(nm); li.appendChild(pts);
-      ol.appendChild(li);
-    });
-    var note = document.createElement('p'); note.className = 'note';
-    note.textContent = shared
-      ? (useOps
-        ? (queue.length ? (syncState === 'offline' ? 'Offline right now. Your scores and bolts will save when the internet is back.' : 'Saving...') : 'Shared with the family.')
-        : (canSave ? 'Shared with the family. Updates live.' : 'You can see the family scores here, but this device can’t save to them.'))
-      : 'Saved on this device only.';
-    el.replaceChildren(h, ol, note);
-  }
   function renderBoard() {
     PLAYERS.forEach(function (p) {
       var b = document.getElementById('chip-' + p.id);
       if (b) b.setAttribute('aria-pressed', p.id === current ? 'true' : 'false');
     });
-    renderBoardInto(document.getElementById('boardStart'));
-    renderBoardInto(document.getElementById('boardOver'));
     bestEl.textContent = bestOf(current);
     document.getElementById('startBtn').textContent = 'Play as ' + nameOf(current);
     renderBolts();
