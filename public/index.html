@@ -20,7 +20,22 @@ window.__NETDB = function () {
     return fetch(URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ data: data }) })
       .then(function (r) { if (!r.ok) fail(r); return r.json(); }).then(function (j) { emit(j); });
   }
+  // send one action (run finished, bolts earned, item bought, outfit changed); resolves with the server's board
+  function op(o) {
+    return fetch(URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: o }) })
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          if (r.ok) return j.board;
+          var e = new Error(j.error || ('score server ' + r.status));
+          e.code = (r.status === 409 || r.status === 400) ? 'invalid_argument' : 'unavailable';
+          e.board = j.board;
+          throw e;
+        });
+      });
+  }
   var ref = {
+    op: op,
+    emit: emit,
     get: fetchNow,
     set: post,
     update: post,
@@ -2527,7 +2542,9 @@ var OBSART = (function () {
     });
     var note = document.createElement('p'); note.className = 'note';
     note.textContent = shared
-      ? (canSave ? 'Shared with the family. Updates live.' : 'You can see the family scores here, but this device can’t save to them.')
+      ? (useOps
+        ? (queue.length ? (syncState === 'offline' ? 'Offline right now. Your scores and bolts will save when the internet is back.' : 'Saving...') : 'Shared with the family.')
+        : (canSave ? 'Shared with the family. Updates live.' : 'You can see the family scores here, but this device can’t save to them.'))
       : 'Saved on this device only.';
     el.replaceChildren(h, ol, note);
   }
@@ -2561,7 +2578,8 @@ var OBSART = (function () {
     board[id] = rec;
     saveLocal();
     renderBoard();
-    if (dbRef && canSave) pushRun(id, s, now);
+    if (useOps) enqueue({ type: 'run', id: id, score: s });
+    else if (dbRef && canSave) pushRun(id, s, now);
     return isBest;
   }
 
@@ -2594,12 +2612,50 @@ var OBSART = (function () {
     });
   }
 
+  // ---------- save queue (score server version) ----------
+  // Every save is an action with an id, kept on this device until the server confirms it,
+  // so nothing is lost when the internet drops and nothing is counted twice when a save is retried.
+  var useOps = false, queue = [], syncState = 'ok', flushing = false;
+  try { var lq = JSON.parse(localStorage.getItem('jameson-queue') || '[]'); if (Array.isArray(lq)) queue = lq; } catch (e) {}
+  function saveQueue() { try { localStorage.setItem('jameson-queue', JSON.stringify(queue)); } catch (e) {} }
+  function enqueue(op) {
+    op.opId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+    op.at = new Date().toISOString();
+    queue.push(op); saveQueue(); flushQueue();
+  }
+  function pendingFor(id) { for (var i = 0; i < queue.length; i++) if (queue[i].id === id) return true; return false; }
+  function flushQueue() {
+    if (!useOps || flushing) return;
+    if (!queue.length) { if (syncState !== 'ok') { syncState = 'ok'; renderBoard(); } return; }
+    flushing = true;
+    if (syncState !== 'offline') { syncState = 'saving'; renderBoard(); }
+    dbRef.op(queue[0]).then(function (srv) {
+      queue.shift(); saveQueue(); flushing = false; syncState = 'ok';
+      if (!queue.length && srv) dbRef.emit(srv); else renderBoard();
+      flushQueue();
+    }, function (err) {
+      flushing = false;
+      if (err && err.code === 'invalid_argument') {
+        // the server said no (for example, not enough bolts): drop it and take the server's numbers
+        queue.shift(); saveQueue();
+        if (!queue.length && err.board) dbRef.emit(err.board);
+        flushQueue();
+        return;
+      }
+      syncState = 'offline'; renderBoard();
+    });
+  }
+  setInterval(flushQueue, 8000);
+  window.addEventListener('online', flushQueue);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) flushQueue(); });
+
   var dbProvider = window.__NETDB ? Promise.resolve(window.__NETDB()) :
     (window.claude && typeof window.claude.use === 'function') ? window.claude.use('db') : null;
   if (dbProvider) {
     dbProvider.then(function (db) {
       if (!db) return;
       dbRef = db.doc(BOARD_DOC);
+      useOps = typeof dbRef.op === 'function';
       dbRef.onSnapshot(function (snap) {
         shared = true;
         var players = snap.exists ? ((snap.data() || {}).players || {}) : {};
@@ -2607,7 +2663,10 @@ var OBSART = (function () {
         PLAYERS.forEach(function (p) {
           var r = players[p.id];
           var mine = board[p.id];
-          if (r && typeof r.best === 'number') {
+          if (useOps && mine && pendingFor(p.id)) {
+            // this device has saves still on the way: keep showing them
+            next[p.id] = { best: Math.max(mine.best || 0, (r && r.best) || 0), games: Math.max(mine.games || 0, (r && r.games) || 0), last: mine.last, lastAt: mine.lastAt, bestAt: mine.bestAt };
+          } else if (r && typeof r.best === 'number') {
             next[p.id] = { best: r.best, games: r.games || 0, last: r.last, lastAt: r.lastAt, bestAt: r.bestAt };
           } else if (mine && !snap.exists) {
             next[p.id] = mine;
@@ -2618,18 +2677,19 @@ var OBSART = (function () {
         adoptWallets(players);
         renderBoard();
       }, function () { /* keep the local board */ });
+      if (useOps) flushQueue();
     }).catch(function () {});
   }
 
   // ---------- bolts wallet and Dino Shop ----------
   var ITEMS = [
     { id: 'truck', kind: 'outfit', name: 'Truck PJs', desc: 'The classic yellow trucks', price: 0 },
-    { id: 'dino', kind: 'outfit', name: 'Dino PJs', desc: 'Green, with spikes and a tail', price: 25 },
-    { id: 'fire', kind: 'outfit', name: 'Fire Chief', desc: 'Red with shiny stripes', price: 25 },
-    { id: 'space', kind: 'outfit', name: 'Space Ranger', desc: 'Stars and a little planet', price: 30 },
-    { id: 'power', kind: 'upgrade', name: 'Super Power', desc: 'Dino power lasts 14 seconds, not 9', price: 40 },
-    { id: 'magnet', kind: 'upgrade', name: 'Dino Magnet', desc: 'Pulls nearby dinos and trucks to you', price: 50 },
-    { id: 'rex', kind: 'ride', name: 'Rex the T-Rex', desc: 'Ride Rex! He stomps a block every 8 seconds', price: 100 }
+    { id: 'dino', kind: 'outfit', name: 'Dino PJs', desc: 'Green, with spikes and a tail', price: 40 },
+    { id: 'fire', kind: 'outfit', name: 'Fire Chief', desc: 'Red with shiny stripes', price: 60 },
+    { id: 'space', kind: 'outfit', name: 'Space Ranger', desc: 'Stars and a little planet', price: 80 },
+    { id: 'power', kind: 'upgrade', name: 'Super Power', desc: 'Dino power lasts 14 seconds, not 9', price: 120 },
+    { id: 'magnet', kind: 'upgrade', name: 'Dino Magnet', desc: 'Pulls nearby dinos and trucks to you', price: 150 },
+    { id: 'rex', kind: 'ride', name: 'Rex the T-Rex', desc: 'Ride Rex! He stomps a block every 8 seconds', price: 300 }
   ];
   var wallets = {};
   var dirty = {};
@@ -2650,9 +2710,9 @@ var OBSART = (function () {
     boltsPill.textContent = b;
     var sb = document.getElementById('shopBolts'); if (sb) sb.textContent = b;
   }
-  function changed(id) { dirty[id] = true; saveWallets(); renderBolts(); }
+  function changed(id) { if (!useOps) dirty[id] = true; saveWallets(); renderBolts(); }
   function pushWallet(id) {
-    if (!dbRef || !canSave) return;
+    if (useOps || !dbRef || !canSave) return;
     var w = wal(id);
     var patch = { players: {} };
     patch.players[id] = { name: nameOf(id), bolts: w.bolts, owned: w.owned.slice(), outfit: w.outfit || 'truck', ride: !!w.ride };
@@ -2664,7 +2724,7 @@ var OBSART = (function () {
     if (!canSave) return;
     PLAYERS.forEach(function (p) {
       var r = players[p.id];
-      if (dirty[p.id] || (p.id === current && mode === 'bonus')) return;
+      if (dirty[p.id] || (p.id === current && mode === 'bonus') || (useOps && pendingFor(p.id))) return;
       if (r && typeof r.bolts === 'number') wallets[p.id] = { bolts: r.bolts, owned: Array.isArray(r.owned) ? r.owned.slice() : [], outfit: r.outfit || 'truck', ride: !!r.ride };
     });
     saveWallets();
@@ -2741,17 +2801,17 @@ var OBSART = (function () {
           w.bolts -= it.price; w.owned.push(it.id);
           if (it.kind === 'outfit') w.outfit = it.id;
           if (it.kind === 'ride') w.ride = true;
-          changed(current); pushWallet(current); SFX.play('buy'); renderShop();
+          changed(current); pushWallet(current); if (useOps) enqueue({ type: 'buy', id: current, item: it.id }); SFX.play('buy'); renderShop();
           var nb = document.getElementById('buy-' + it.id); if (nb) nb.focus();
         });
       } else if (it.kind === 'outfit') {
         btn.textContent = on ? 'Wearing' : 'Wear';
         btn.disabled = on; if (!on) btn.className = 'equip';
-        btn.addEventListener('click', function () { w.outfit = it.id; changed(current); pushWallet(current); SFX.play('click'); renderShop(); });
+        btn.addEventListener('click', function () { w.outfit = it.id; changed(current); pushWallet(current); if (useOps) enqueue({ type: 'equip', id: current, outfit: it.id }); SFX.play('click'); renderShop(); });
       } else if (it.kind === 'ride') {
         btn.textContent = w.ride ? 'Walk instead' : 'Ride Rex';
         btn.className = 'equip';
-        btn.addEventListener('click', function () { w.ride = !w.ride; changed(current); pushWallet(current); SFX.play('click'); renderShop(); var nb = document.getElementById('buy-rex'); if (nb) nb.focus(); });
+        btn.addEventListener('click', function () { w.ride = !w.ride; changed(current); pushWallet(current); if (useOps) enqueue({ type: 'equip', id: current, ride: w.ride }); SFX.play('click'); renderShop(); var nb = document.getElementById('buy-rex'); if (nb) nb.focus(); });
       } else {
         btn.textContent = 'Owned'; btn.disabled = true;
       }
@@ -2892,6 +2952,7 @@ var OBSART = (function () {
     pauseBtn.hidden = true;
     setBonusUI(false);
     warp = null;
+    sendBonusEarnings();
     if (dirty[current]) pushWallet(current);
     SFX.play('bonk');
     var s = score();
@@ -3262,7 +3323,7 @@ var OBSART = (function () {
       var tier = i % 2 === 0 ? 1 : 2;
       plats.push({ x: (i + 0.5) / cols * W, y: GROUND - (tier === 1 ? 108 : 196), w: Math.min(170, W / cols - 16), seed: Math.random() });
     }
-    return { time: BONUS_TIME, plats: plats, bolts: [], stars: [], got: 0, starIn: 1.2, boltIn: 0 };
+    return { time: BONUS_TIME, plats: plats, bolts: [], stars: [], got: 0, sent: 0, starIn: 1.2, boltIn: 0 };
   }
   function enterBonus() {
     mode = 'bonus';
@@ -3274,7 +3335,14 @@ var OBSART = (function () {
     banner('Bonus world! Grab the bolts!', '#FFD23F', 2.2);
     setBonusUI(true);
   }
+  // send bolts earned in the bonus world (also called if the game closes mid-bonus)
+  function sendBonusEarnings() {
+    if (useOps && B && B.got > B.sent) { enqueue({ type: 'earn', id: current, n: B.got - B.sent }); B.sent = B.got; }
+  }
+  window.addEventListener('pagehide', sendBonusEarnings);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) sendBonusEarnings(); });
   function exitBonus() {
+    sendBonusEarnings();
     var got = B ? B.got : 0;
     mode = 'run'; B = null;
     obstacles = []; goodies = []; shots = [];
@@ -3711,7 +3779,7 @@ var OBSART = (function () {
   requestAnimationFrame(frame);
 
   // test hook for screenshots only
-  window.__jd = { start: start, jump: jump, blast: blast, power: function () { setPower(POWER_TIME); }, pause: pauseGame, goodie: spawnGoodie, warp: startWarp, setKey: function (k, v) { keys[k] = v; }, addBolts: function (n) { wal(current).bolts += n; changed(current); }, B: function () { return B; }, mode: function () { return mode; }, shop: openShop, grabs: function (n) { pickupsRun += n; if (pickupsRun >= nextPortal && !portal) portalIn = 0.1; }, step: function (dt) { update(dt); }, st: function () { return { state: state, vel: vel, speed: speed, dist: dist, mode: mode, zi: zoneIdx, grace: grace }; }, setGrace: function (g) { grace = g; }, spawn: spawnObstacle, pattern: function (n) { spawnPattern(n); }, setDist: function (d) { dist = d; }, zone: function () { return zoneKey; }, obs: function () { return obstacles; }, P: function () { return P; } };
+  window.__jd = { start: start, jump: jump, blast: blast, power: function () { setPower(POWER_TIME); }, pause: pauseGame, goodie: spawnGoodie, warp: startWarp, setKey: function (k, v) { keys[k] = v; }, addBolts: function (n) { wal(current).bolts += n; changed(current); if (useOps) enqueue({ type: 'earn', id: current, n: n }); }, queue: function () { return queue; }, B: function () { return B; }, mode: function () { return mode; }, shop: openShop, grabs: function (n) { pickupsRun += n; if (pickupsRun >= nextPortal && !portal) portalIn = 0.1; }, step: function (dt) { update(dt); }, st: function () { return { state: state, vel: vel, speed: speed, dist: dist, mode: mode, zi: zoneIdx, grace: grace }; }, setGrace: function (g) { grace = g; }, spawn: spawnObstacle, pattern: function (n) { spawnPattern(n); }, setDist: function (d) { dist = d; }, zone: function () { return zoneKey; }, obs: function () { return obstacles; }, P: function () { return P; } };
 })();
 </script>
 
