@@ -116,6 +116,21 @@ h1 {
   text-wrap: balance;
 }
 .scores { display: flex; gap: 8px; }
+.titlewrap { display: flex; align-items: center; gap: 12px; min-width: 0; }
+a.homebtn {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+  font-family: var(--display); font-size: 17px; letter-spacing: 1px; color: var(--navy);
+  background: var(--sun); border: 3px solid var(--navy); border-radius: 14px;
+  padding: 6px 12px 4px 10px; min-height: 40px; box-sizing: border-box; box-shadow: 0 4px 0 var(--navy);
+  transition: transform .12s ease-out, box-shadow .12s ease-out;
+}
+a.homebtn svg { width: 22px; height: 22px; margin-top: -3px; }
+a.homebtn:hover { transform: translateY(-2px); box-shadow: 0 6px 0 var(--navy); }
+a.homebtn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--navy); }
+a.homebtn:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+@media (max-width: 560px) { a.homebtn span { display: none; } a.homebtn { padding: 6px 8px; } }
+@media (max-height: 520px) { a.homebtn { min-height: 32px; font-size: 14px; padding: 3px 9px 1px 7px; box-shadow: 0 3px 0 var(--navy); } a.homebtn svg { width: 18px; height: 18px; } }
+@media (prefers-reduced-motion: reduce) { a.homebtn { transition: none; } }
 .pill {
   background: var(--navy);
   color: var(--white);
@@ -381,6 +396,7 @@ button.go:disabled, button.shopbtn:disabled { opacity: 0.45; cursor: not-allowed
   button.go { font-size: 24px; min-height: 48px; padding: 8px 22px 5px; }
 }
 .newbest { margin: 0; font-family: var(--display); font-size: 20px; letter-spacing: 1px; color: #1C7FD6; }
+a.link { font-family: var(--body); font-weight: 700; font-size: 15px; color: var(--navy); padding: 8px; min-height: 40px; box-sizing: border-box; display: inline-flex; align-items: center; }
 button.link {
   font-family: var(--body);
   font-weight: 700;
@@ -448,7 +464,10 @@ button.go, button.shopbtn { transition: transform .12s ease-out, box-shadow .12s
 </style>
 
 <header>
-  <h1>Jameson's Dino Dash</h1>
+  <div class="titlewrap">
+    <a class="homebtn" href="/" aria-label="Home: back to the Dino Dash home page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11.2L12 4l8.5 7.2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path><path d="M6 10v9.2c0 .5.4.8.8.8H10v-5.2h4V20h3.2c.4 0 .8-.3.8-.8V10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg><span>Home</span></a>
+    <h1>Jameson's Dino Dash</h1>
+  </div>
   <div class="scores">
     <span class="pill">Score <b id="score">0</b></span>
     <span class="pill">Best <b id="best">0</b></span>
@@ -530,7 +549,7 @@ button.go, button.shopbtn { transition: transform .12s ease-out, box-shadow .12s
       <h2>Paused</h2>
       <p>Jameson is catching his breath.</p>
       <button class="go" id="resumeBtn" type="button">Keep going</button>
-      <button class="link" id="quitBtn" type="button">End this run</button>
+      <div class="row2"><button class="link" id="quitBtn" type="button">End this run</button><a class="link" href="/">Home</a></div>
     </div>
   </div>
 

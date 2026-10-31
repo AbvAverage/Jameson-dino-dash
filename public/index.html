@@ -26,6 +26,7 @@
     <span>Dino Dash</span>
   </a>
   <div class="navlinks">
+    <a href="#scores">Scores</a>
     <a href="#adventure">How to play</a>
     <a href="#worlds">Worlds</a>
     <a href="#shop">Dino Shop</a>
@@ -55,10 +56,26 @@
       <a class="btn btn-ghost" href="#adventure">Explore the adventure</a>
     </div>
   </div>
+  <a class="hero-top" id="heroTop" href="#scores" hidden><span class="hero-top-k">Top score</span> <b></b></a>
   <p class="hero-note">Free in your browser. Phones, tablets and computers.</p>
 </header>
 
 <main>
+
+  <section class="scores" id="scores" aria-labelledby="lbTitle">
+    <div class="wrap">
+      <p class="eyebrow">Family leaderboard</p>
+      <h2 id="lbTitle" class="h2">Who's the top dino? <span>Live from every device.</span></h2>
+      <p class="lb-intro">Every player who types their name in the game shows up here, friends included. Beat the top score on any phone, tablet or computer and it lands on this board.</p>
+      <div class="lb-board" id="lbBoard" aria-busy="true">
+        <p class="lb-status" id="lbStatus" role="status">Loading scores...</p>
+        <ol class="lb-podium" id="lbPodium" aria-label="Top three"></ol>
+        <ol class="lb-list" id="lbList" start="4" aria-label="More players" hidden></ol>
+        <p class="lb-empty" id="lbEmpty" hidden>No scores yet. Be the first on the board!</p>
+      </div>
+      <div class="lb-cta"><a class="btn btn-play btn-sm" href="/play/" data-play>Play and get on the board</a></div>
+    </div>
+  </section>
 
   <section class="adventure" id="adventure" aria-labelledby="advTitle">
     <div class="canopy canopy-top" aria-hidden="true"></div>
@@ -200,5 +217,6 @@
 
 <script src="/assets/dd-art.js"></script>
 <script src="/assets/landing.js"></script>
+<script src="/assets/scores.js"></script>
 </body>
 </html>
