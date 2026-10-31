@@ -2392,52 +2392,75 @@ var OBSART = (function () {
   function boulder(ctx, cx, cy, r, rot, zone, t) {
     ctx.save(); ctx.translate(cx, cy);
     if (zone === 'volcano') {
-      var hg = ctx.createRadialGradient(0, 0, r * 0.5, 0, 0, r * 1.7);
-      hg.addColorStop(0, 'rgba(255,120,40,0.45)'); hg.addColorStop(1, 'rgba(255,120,40,0)');
-      ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(0, 0, r * 1.7, 0, 6.3); ctx.fill();
+      var hg = ctx.createRadialGradient(0, 0, r * 0.5, 0, 0, r * 1.8);
+      hg.addColorStop(0, 'rgba(255,120,40,0.5)'); hg.addColorStop(1, 'rgba(255,120,40,0)');
+      ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(0, 0, r * 1.8, 0, 6.3); ctx.fill();
     }
-    ctx.rotate(rot);
+    // swoosh lines behind it (it rolls toward the runner, so behind is to the right)
+    ctx.lineCap = 'round';
+    for (var sl = 0; sl < 3; sl++) {
+      ctx.strokeStyle = 'rgba(255,255,255,' + (0.6 - sl * 0.15) + ')'; ctx.lineWidth = 3.2 - sl * 0.6;
+      var ly = -r * 0.55 + sl * r * 0.55, lx = r + 6 + sl * 4;
+      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 22 + sl * 10 + Math.sin(t * 20 + sl) * 4, ly); ctx.stroke();
+    }
+    ctx.save(); ctx.rotate(rot);
     if (zone === 'beach') {
-      // a big rolling coconut
+      // a big rolling coconut: husk, fibres, three eyes
       var cg = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r);
-      cg.addColorStop(0, '#A7743E'); cg.addColorStop(0.6, '#6E4423'); cg.addColorStop(1, '#3E2412');
-      ctx.fillStyle = cg; ctx.strokeStyle = '#2A170A'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.3); ctx.fill(); ctx.stroke();
-      ctx.strokeStyle = 'rgba(220,170,110,0.45)'; ctx.lineWidth = 1.2;
-      for (var i = 0; i < 22; i++) { var a = i * 0.29, rr = r * (0.3 + (i % 5) * 0.14); ctx.beginPath(); ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); ctx.lineTo(Math.cos(a + 0.2) * (rr + 6), Math.sin(a + 0.2) * (rr + 6)); ctx.stroke(); }
+      cg.addColorStop(0, '#B8834A'); cg.addColorStop(0.55, '#7A4C26'); cg.addColorStop(1, '#43260F');
+      ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.3); ctx.fill();
+      ctx.save(); ctx.clip();
+      ctx.strokeStyle = 'rgba(235,190,130,0.5)'; ctx.lineWidth = 1.4;
+      for (var i = 0; i < 30; i++) { var a2 = i * 0.21, rr = r * (0.25 + (i % 6) * 0.13); ctx.beginPath(); ctx.moveTo(Math.cos(a2) * rr, Math.sin(a2) * rr); ctx.lineTo(Math.cos(a2 + 0.25) * (rr + 8), Math.sin(a2 + 0.25) * (rr + 8)); ctx.stroke(); }
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.arc(r * 0.35, r * 0.35, r * 0.85, 0, 6.3); ctx.fill();
+      ctx.restore();
       ctx.fillStyle = '#2A170A';
-      [[-7, -6], [5, -8], [-1, 4]].forEach(function (e) { ctx.beginPath(); ctx.ellipse(e[0], e[1], 3.4, 2.6, 0, 0, 6.3); ctx.fill(); });
-      ctx.restore(); return;
-    }
-    // lumpy rock outline
-    ctx.beginPath();
-    for (var k = 0; k <= 12; k++) {
-      var ang = k / 12 * Math.PI * 2, wob = 1 + Math.sin(k * 2.7) * 0.07 + Math.cos(k * 1.3) * 0.05;
-      var px = Math.cos(ang) * r * wob, py = Math.sin(ang) * r * wob;
-      if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    var g = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.15, 0, 0, r * 1.1);
-    if (zone === 'volcano') { g.addColorStop(0, '#5B4A4A'); g.addColorStop(0.6, '#33282A'); g.addColorStop(1, '#1A1214'); }
-    else { g.addColorStop(0, '#B8B2A6'); g.addColorStop(0.55, '#857F74'); g.addColorStop(1, '#4F4A43'); }
-    ctx.fillStyle = g; ctx.fill();
-    ctx.save(); ctx.clip();
-    if (zone === 'volcano') {
-      ctx.strokeStyle = 'rgba(255,140,40,' + (0.75 + Math.sin(t * 6) * 0.2) + ')'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
-      [[[-14, -10], [-4, -2], [-8, 10]], [[6, -14], [10, -2], [18, 4]], [[-2, 6], [8, 12]]].forEach(function (c) { ctx.beginPath(); ctx.moveTo(c[0][0], c[0][1]); for (var q = 1; q < c.length; q++) ctx.lineTo(c[q][0], c[q][1]); ctx.stroke(); });
+      [[-7, -6], [5, -8], [-1, 4]].forEach(function (e) { ctx.beginPath(); ctx.ellipse(e[0], e[1], 3.8, 3, 0, 0, 6.3); ctx.fill(); });
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.3);
+      ctx.strokeStyle = OUT; ctx.lineWidth = 3; ctx.stroke();
     } else {
-      // moss on one side and a few speckles
-      ctx.fillStyle = 'rgba(90,150,60,0.85)';
-      ctx.beginPath(); ctx.ellipse(-r * 0.3, -r * 0.7, r * 0.7, r * 0.35, -0.3, 0, 6.3); ctx.fill();
-      ctx.fillStyle = 'rgba(130,190,80,0.8)';
-      ctx.beginPath(); ctx.ellipse(-r * 0.4, -r * 0.78, r * 0.38, r * 0.16, -0.3, 0, 6.3); ctx.fill();
-      ctx.strokeStyle = 'rgba(40,35,30,0.45)'; ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.moveTo(4, -6); ctx.lineTo(10, 4); ctx.lineTo(6, 14); ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.18)';
-      [[-10, 6, 2.5], [12, -10, 2], [2, 14, 1.8]].forEach(function (s) { ctx.beginPath(); ctx.arc(s[0], s[1], s[2], 0, 6.3); ctx.fill(); });
+      // lumpy rock with facets
+      var pts = [];
+      for (var k = 0; k < 14; k++) {
+        var ang = k / 14 * Math.PI * 2, wob = 1 + Math.sin(k * 2.7) * 0.08 + Math.cos(k * 1.3) * 0.06;
+        pts.push([Math.cos(ang) * r * wob, Math.sin(ang) * r * wob]);
+      }
+      ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+      for (var q = 1; q < pts.length; q++) ctx.lineTo(pts[q][0], pts[q][1]);
+      ctx.closePath();
+      var g = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r * 1.1);
+      if (zone === 'volcano') { g.addColorStop(0, '#6E5656'); g.addColorStop(0.55, '#3A2C2E'); g.addColorStop(1, '#1A1214'); }
+      else { g.addColorStop(0, '#D4CEC2'); g.addColorStop(0.5, '#958E82'); g.addColorStop(1, '#55504A'); }
+      ctx.fillStyle = g; ctx.fill();
+      ctx.save(); ctx.clip();
+      // facets: a lit plane and a shadowed plane
+      ctx.fillStyle = 'rgba(255,255,255,0.16)';
+      ctx.beginPath(); ctx.moveTo(-r, -r * 0.1); ctx.lineTo(-r * 0.15, -r * 0.25); ctx.lineTo(r * 0.2, -r); ctx.lineTo(-r, -r); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.beginPath(); ctx.moveTo(r, -r * 0.05); ctx.lineTo(r * 0.1, r * 0.25); ctx.lineTo(-r * 0.3, r); ctx.lineTo(r, r); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(30,25,20,0.4)'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(-r * 0.15, -r * 0.25); ctx.lineTo(r * 0.1, r * 0.25); ctx.moveTo(-r * 0.15, -r * 0.25); ctx.lineTo(-r * 0.7, r * 0.15); ctx.stroke();
+      if (zone === 'volcano') {
+        ctx.strokeStyle = 'rgba(255,140,40,' + (0.75 + Math.sin(t * 6) * 0.2) + ')'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+        [[[-14, -10], [-4, -2], [-8, 10]], [[6, -14], [10, -2], [18, 4]], [[-2, 6], [8, 12]]].forEach(function (c) { ctx.beginPath(); ctx.moveTo(c[0][0], c[0][1]); for (var z = 1; z < c.length; z++) ctx.lineTo(c[z][0], c[z][1]); ctx.stroke(); });
+      } else {
+        ctx.fillStyle = 'rgba(80,145,55,0.9)';
+        ctx.beginPath(); ctx.ellipse(-r * 0.3, -r * 0.72, r * 0.72, r * 0.36, -0.3, 0, 6.3); ctx.fill();
+        ctx.fillStyle = 'rgba(140,200,85,0.85)';
+        ctx.beginPath(); ctx.ellipse(-r * 0.42, -r * 0.8, r * 0.38, r * 0.15, -0.3, 0, 6.3); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.22)';
+        [[-10, 6, 2.5], [12, -10, 2], [2, 14, 1.8], [-16, -2, 1.5]].forEach(function (s2) { ctx.beginPath(); ctx.arc(s2[0], s2[1], s2[2], 0, 6.3); ctx.fill(); });
+      }
+      ctx.restore();
+      ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+      for (var q2 = 1; q2 < pts.length; q2++) ctx.lineTo(pts[q2][0], pts[q2][1]);
+      ctx.closePath(); ctx.lineJoin = 'round';
+      ctx.strokeStyle = OUT; ctx.lineWidth = 3; ctx.stroke();
     }
     ctx.restore();
-    ctx.strokeStyle = 'rgba(20,15,10,0.75)'; ctx.lineWidth = 2.2; ctx.stroke();
+    // rim light that stays on the sunny side while it rolls
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(-r * 0.08, -r * 0.08, r * 0.76, Math.PI * 1.08, Math.PI * 1.48); ctx.stroke();
     ctx.restore();
   }
 
@@ -2446,8 +2469,15 @@ var OBSART = (function () {
     var tipY = -8 - f * 46, tipX = -2 - f * 6;
     var body = zone === 'volcano' ? ['#F07A44', '#A3341C', '#FFD08A'] : zone === 'beach' ? ['#62BDF0', '#2C6FA8', '#D8F2FF'] : ['#A47AE0', '#5A3A92', '#E6D6FF'];
     var memb = zone === 'volcano' ? ['rgba(255,190,120,0.95)', 'rgba(200,90,40,0.95)'] : zone === 'beach' ? ['rgba(205,240,255,0.95)', 'rgba(90,160,220,0.95)'] : ['rgba(230,210,255,0.95)', 'rgba(140,100,210,0.95)'];
+    // motion lines trailing behind (to the right)
+    ctx.lineCap = 'round';
+    for (var ml = 0; ml < 3; ml++) {
+      ctx.strokeStyle = 'rgba(255,255,255,' + (0.55 - ml * 0.14) + ')'; ctx.lineWidth = 3 - ml * 0.6;
+      var my2 = y - 6 + ml * 9 + f * 3, mx2 = x + 52 + ml * 6;
+      ctx.beginPath(); ctx.moveTo(mx2, my2); ctx.lineTo(mx2 + 24 + ml * 8, my2); ctx.stroke();
+    }
     ctx.save(); ctx.translate(x, y + f * 4); ctx.scale(-1.35, 1.35); // faces left, toward the runner
-    ctx.lineJoin = 'round'; ctx.strokeStyle = OUT; ctx.lineWidth = 1.8;
+    ctx.lineJoin = 'round'; ctx.strokeStyle = OUT; ctx.lineWidth = 2.3;
     function wingPath(sx, sy, tx, ty, back) {
       var up = ty < sy ? 1 : -1;
       ctx.beginPath();
@@ -2466,6 +2496,7 @@ var OBSART = (function () {
     ctx.fillStyle = bg;
     ctx.beginPath(); ctx.ellipse(0, 0, 20, 9, -0.06, 0, 6.3); ctx.fill(); ctx.stroke();
     ctx.fillStyle = body[2]; ctx.beginPath(); ctx.ellipse(2, 4, 12, 3.5, -0.06, 0, 6.3); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.beginPath(); ctx.ellipse(4, -4, 9, 2.4, -0.1, 0, 6.3); ctx.fill();
     // tail with a little vane
     ctx.fillStyle = body[1];
     ctx.beginPath(); ctx.moveTo(-18, 1); ctx.lineTo(-36, 3); ctx.lineTo(-18, 5); ctx.closePath(); ctx.fill(); ctx.stroke();
@@ -2490,6 +2521,8 @@ var OBSART = (function () {
     var wg = ctx.createLinearGradient(0, -3, tipX, tipY);
     wg.addColorStop(0, memb[1]); wg.addColorStop(1, memb[0]);
     ctx.fillStyle = wg; ctx.fill(); ctx.stroke();
+    ctx.save(); ctx.clip(); ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.beginPath(); ctx.ellipse(tipX * 0.35, tipY * 0.35, 16, 4, Math.atan2(tipY, tipX), 0, 6.3); ctx.fill(); ctx.restore();
     ctx.strokeStyle = 'rgba(40,20,60,0.45)'; ctx.lineWidth = 2.2;
     ctx.beginPath(); ctx.moveTo(4, -3); ctx.quadraticCurveTo(14, (tipY - 3) / 2, tipX, tipY); ctx.stroke();
     ctx.fillStyle = '#F4ECD2'; ctx.beginPath(); ctx.arc((4 + tipX) * 0.45, (tipY - 3) * 0.45 - 2, 1.8, 0, 6.3); ctx.fill();
@@ -2497,50 +2530,76 @@ var OBSART = (function () {
   }
 
   function pteroShadow(ctx, x, GROUND) {
-    ctx.fillStyle = 'rgba(20,30,20,0.18)';
-    ctx.beginPath(); ctx.ellipse(x, GROUND + 3, 30, 5, 0, 0, 6.3); ctx.fill();
+    ctx.fillStyle = 'rgba(20,30,20,0.24)';
+    ctx.beginPath(); ctx.ellipse(x, GROUND + 3, 36, 6, 0, 0, 6.3); ctx.fill();
   }
 
   function mud(ctx, x, w, GROUND, t, zone) {
-    var y = GROUND + 2;
-    // pit rim
+    var y = GROUND + 3, cx = x + w / 2, rx = w / 2, ry = 12;
+    var pal = zone === 'beach'
+      ? { rim: '#E2C887', rimD: '#B08F55', top: '#B6F1FA', bot: '#2C97C0', bub: 'rgba(255,255,255,0.95)', hi: 'rgba(255,255,255,0.85)', clump: '#CFB273' }
+      : zone === 'volcano'
+        ? { rim: '#4A3638', rimD: '#1E1416', top: '#5A3462', bot: '#140814', bub: 'rgba(255,160,70,0.95)', hi: 'rgba(255,175,95,0.6)', clump: '#2E2224' }
+        : { rim: '#8A5C34', rimD: '#4E3018', top: '#A26C38', bot: '#3A210C', bub: 'rgba(200,150,95,0.95)', hi: 'rgba(255,238,205,0.55)', clump: '#6B4424' };
     ctx.save();
-    ctx.beginPath(); ctx.ellipse(x + w / 2, y + 2, w / 2 + 6, 13, 0, 0, 6.3);
-    ctx.fillStyle = zone === 'beach' ? '#D8C08A' : zone === 'volcano' ? '#2A1D1E' : '#5C3A1C'; ctx.fill();
-    // surface
-    ctx.beginPath(); ctx.ellipse(x + w / 2, y + 1, w / 2, 10, 0, 0, 6.3);
-    var g = ctx.createLinearGradient(0, y - 10, 0, y + 10);
-    if (zone === 'beach') { g.addColorStop(0, '#9FE6F2'); g.addColorStop(1, '#3BA9C9'); }
-    else if (zone === 'volcano') { g.addColorStop(0, '#3B2440'); g.addColorStop(1, '#140A14'); }
-    else { g.addColorStop(0, '#8A5A2E'); g.addColorStop(1, '#4A2C12'); }
+    // raised lip
+    var rg = ctx.createLinearGradient(0, y - ry - 6, 0, y + ry + 8);
+    rg.addColorStop(0, pal.rim); rg.addColorStop(1, pal.rimD);
+    ctx.beginPath(); ctx.ellipse(cx, y + 2, rx + 10, ry + 6, 0, 0, 6.3);
+    ctx.fillStyle = rg; ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 2.5; ctx.stroke();
+    // clumps and splats around the edge
+    ctx.fillStyle = pal.clump;
+    for (var c = 0; c < 7; c++) {
+      var ca = Math.PI * (1.05 + c * 0.15), ccx = cx + Math.cos(ca) * (rx + 9), ccy = y + 2 + Math.sin(ca) * (ry + 5);
+      ctx.beginPath(); ctx.ellipse(ccx, ccy - 1, 4 + (c % 3), 3, 0, 0, 6.3); ctx.fill();
+    }
+    // the liquid
+    ctx.beginPath(); ctx.ellipse(cx, y + 1, rx, ry, 0, 0, 6.3);
+    var g = ctx.createLinearGradient(0, y - ry, 0, y + ry);
+    g.addColorStop(0, pal.top); g.addColorStop(1, pal.bot);
     ctx.fillStyle = g; ctx.fill();
     ctx.save(); ctx.clip();
-    if (zone === 'beach') {
-      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5;
-      for (var i = 0; i < 3; i++) { var rr = ((t * 30 + i * 22) % 60); ctx.beginPath(); ctx.ellipse(x + w * (0.3 + i * 0.2), y + 1, rr, rr * 0.2, 0, 0, 6.3); ctx.stroke(); }
-    } else if (zone === 'volcano') {
-      ctx.fillStyle = 'rgba(255,130,40,0.55)';
-      for (var j = 0; j < 4; j++) { ctx.beginPath(); ctx.ellipse(x + w * (0.15 + j * 0.22), y + Math.sin(t * 2 + j) * 2, 12, 2.4, 0, 0, 6.3); ctx.fill(); }
-    } else {
-      ctx.fillStyle = 'rgba(255,230,190,0.18)';
-      ctx.beginPath(); ctx.ellipse(x + w * 0.35, y - 3, w * 0.25, 2.5, 0, 0, 6.3); ctx.fill();
+    // depth: shadow under the far lip
+    ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.beginPath(); ctx.ellipse(cx, y - ry + 2, rx * 1.02, 6, 0, 0, 6.3); ctx.fill();
+    // ripples
+    for (var k = 0; k < 3; k++) {
+      var ph = (t * 0.55 + k * 0.33) % 1, rr = 4 + ph * rx * 0.32;
+      ctx.globalAlpha = (1 - ph) * 0.8; ctx.strokeStyle = pal.hi; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.ellipse(cx + (k - 1) * rx * 0.45, y + 2, rr, rr * 0.22, 0, 0, 6.3); ctx.stroke();
     }
+    ctx.globalAlpha = 1;
+    if (zone === 'volcano') {
+      ctx.fillStyle = 'rgba(255,130,40,0.6)';
+      for (var j = 0; j < 4; j++) { ctx.beginPath(); ctx.ellipse(x + w * (0.15 + j * 0.22), y + 2 + Math.sin(t * 2 + j) * 2, 12, 2.6, 0, 0, 6.3); ctx.fill(); }
+    }
+    // glossy highlights
+    ctx.fillStyle = pal.hi;
+    ctx.beginPath(); ctx.ellipse(cx - rx * 0.3, y - 2, rx * 0.3, 2.3, 0, 0, 6.3); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + rx * 0.15, y - 4, rx * 0.08, 1.4, 0, 0, 6.3); ctx.fill();
     ctx.restore();
-    // bubbles
-    for (var k = 0; k < 4; k++) {
-      var ph = (t * 0.9 + k * 0.27) % 1;
-      var bx = x + w * (0.15 + k * 0.23), br = 2 + ph * 5;
-      ctx.globalAlpha = 1 - ph;
-      ctx.strokeStyle = zone === 'beach' ? 'rgba(255,255,255,0.9)' : zone === 'volcano' ? 'rgba(255,150,60,0.9)' : 'rgba(170,120,70,0.95)';
-      ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(bx, y - 2 - ph * 4, br, Math.PI, 0); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(cx, y + 1, rx, ry, 0, 0, 6.3);
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+    // bubbles that grow and pop
+    for (var bb = 0; bb < 4; bb++) {
+      var bp = (t * 0.8 + bb * 0.29) % 1, bx = x + w * (0.18 + bb * 0.21), by = y + 1 - bp * 3;
+      if (bp < 0.8) {
+        var br = 1.5 + bp * 6;
+        ctx.fillStyle = pal.bub; ctx.globalAlpha = 0.35; ctx.beginPath(); ctx.arc(bx, by, br, Math.PI, 0); ctx.fill();
+        ctx.globalAlpha = 0.95; ctx.strokeStyle = pal.bub; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(bx, by, br, Math.PI, 0); ctx.stroke();
+        ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(bx - br * 0.35, by - br * 0.5, Math.max(0.6, br * 0.18), 0, 6.3); ctx.fill();
+      } else {
+        var pk = (bp - 0.8) / 0.2;
+        ctx.globalAlpha = 1 - pk; ctx.strokeStyle = pal.bub; ctx.lineWidth = 1.4;
+        for (var dd = 0; dd < 4; dd++) { var da = Math.PI * (1.1 + dd * 0.26); ctx.beginPath(); ctx.moveTo(bx + Math.cos(da) * 5, by + Math.sin(da) * 5); ctx.lineTo(bx + Math.cos(da) * (7 + pk * 6), by + Math.sin(da) * (7 + pk * 6)); ctx.stroke(); }
+      }
     }
     ctx.globalAlpha = 1;
     // reeds on the edges in the jungle
     if (zone === 'jungle') {
-      [[x - 4, -1], [x + w + 2, 1]].forEach(function (e) {
-        ctx.strokeStyle = '#4C8A3A'; ctx.lineWidth = 2;
-        for (var r = 0; r < 3; r++) { ctx.beginPath(); ctx.moveTo(e[0] + r * 4 * e[1], y); ctx.quadraticCurveTo(e[0] + r * 4 * e[1] + 3, y - 14, e[0] + r * 5 * e[1], y - 26 - r * 4); ctx.stroke(); }
-        ctx.fillStyle = '#6B3E1E'; ctx.beginPath(); ctx.ellipse(e[0] + 8 * e[1], y - 30, 2.6, 6, 0, 0, 6.3); ctx.fill();
+      [[x - 8, -1], [x + w + 6, 1]].forEach(function (e) {
+        ctx.strokeStyle = '#4C8A3A'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+        for (var r = 0; r < 3; r++) { var sway = Math.sin(t * 2 + r) * 2; ctx.beginPath(); ctx.moveTo(e[0] + r * 4 * e[1], y); ctx.quadraticCurveTo(e[0] + r * 4 * e[1] + 3, y - 14, e[0] + r * 5 * e[1] + sway, y - 26 - r * 4); ctx.stroke(); }
+        ctx.fillStyle = '#6B3E1E'; ctx.beginPath(); ctx.ellipse(e[0] + 8 * e[1] + Math.sin(t * 2) * 2, y - 30, 2.8, 6.5, 0, 0, 6.3); ctx.fill();
       });
     }
     ctx.restore();
