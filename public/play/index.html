@@ -442,6 +442,10 @@ button.go, button.shopbtn { transition: transform .12s ease-out, box-shadow .12s
       <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 8.5a5 5 0 0 1 0 7"></path><path d="M19 6a8.5 8.5 0 0 1 0 12"></path></svg>
       <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M17 9l5 6M22 9l-5 6"></path></svg>
     </button>
+    <button class="ctrl" id="musicBtn" type="button" aria-label="Turn music off" aria-pressed="false">
+      <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="17" cy="16" r="3"></circle></svg>
+      <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="17" cy="16" r="3"></circle><path d="M3 3l18 18"></path></svg>
+    </button>
     <button class="ctrl" id="pauseBtn" type="button" aria-label="Pause" hidden>
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4.2" height="14" rx="1.4"></rect><rect x="13.8" y="5" width="4.2" height="14" rx="1.4"></rect></svg>
     </button>
@@ -1228,7 +1232,84 @@ var SFX = (function () {
     milestone: function () { [659, 784, 988, 1319].forEach(function (f, i) { tone('triangle', f, null, 0.16, 0.14, i * 0.07); }); },
     tick: function () { tone('square', 1250, null, 0.045, 0.05); }
   };
+  // ---- background music: a little chiptune band per world, scheduled ahead on the audio clock ----
+  var SONGS = {
+    // root (MIDI), 4-bar chord progression (semitones from root), tempo, lead voice, swing, lead rhythm (16 steps)
+    jungle:  { root: 60, bpm: 126, prog: [[0, 4, 7], [7, 11, 14], [9, 12, 16], [5, 9, 12]], lead: 'triangle', swing: 0.0,  rh: [1,0,1,0, 1,1,0,1, 1,0,1,0, 1,0,1,1], bassRh: [1,0,0,1, 0,0,1,0, 1,0,0,1, 0,0,1,0] },
+    volcano: { root: 57, bpm: 138, prog: [[0, 3, 7], [-4, 0, 3], [3, 7, 10], [-2, 2, 5]], lead: 'square',   swing: 0.0,  rh: [1,0,1,1, 0,1,0,1, 1,0,1,1, 0,1,1,0], bassRh: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,1] },
+    beach:   { root: 65, bpm: 112, prog: [[0, 4, 7], [5, 9, 12], [7, 11, 14], [5, 9, 12]], lead: 'sine',     swing: 0.16, rh: [1,0,0,1, 0,0,1,0, 1,0,1,0, 0,1,0,0], bassRh: [1,0,0,0, 0,0,1,0, 1,0,0,0, 0,0,1,0] },
+    bonus:   { root: 72, bpm: 148, prog: [[0, 4, 7], [9, 12, 16], [5, 9, 12], [7, 11, 14]], lead: 'triangle', swing: 0.0,  rh: [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1], bassRh: [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0] }
+  };
+  var mus = { on: true, playing: false, song: null, want: null, step: 0, next: 0, idx: 0, tempo: 1, gain: null, timer: null };
+  function midi(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+  function mnote(type, m, t, dur, vol) {
+    var o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(midi(m), t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(mus.gain); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function mnoise(t, dur, vol, type, freq) {
+    var src = ac.createBufferSource(); src.buffer = noiseBuf;
+    var f = ac.createBiquadFilter(); f.type = type; f.frequency.value = freq;
+    var g = ac.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(mus.gain); src.start(t); src.stop(t + dur + 0.02);
+  }
+  function mstep(S, st, t, len) {
+    var pos = st % 16, bar = Math.floor(st / 16) % 4, ch = S.prog[bar];
+    // drums
+    if (pos % 4 === 0) { var o = ac.createOscillator(), g = ac.createGain(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14); o.connect(g); g.connect(mus.gain); o.start(t); o.stop(t + 0.16); }
+    if (pos === 4 || pos === 12) mnoise(t, 0.11, 0.22, 'bandpass', 1800);
+    if (pos % 2 === 0) mnoise(t, 0.035, 0.07, 'highpass', 7000);
+    // bass
+    if (S.bassRh[pos]) mnote('triangle', S.root - 12 + ch[0] + (pos >= 8 && bar % 2 ? 7 : 0), t, len * 1.8, 0.34);
+    // lead: arpeggio over the chord, rising then turning back down at the end of the phrase
+    if (S.rh[pos]) {
+      var k = mus.idx++, up = bar < 3 || pos < 12;
+      var tone = ch[(up ? k : 2 - (k % 3)) % 3] + 12 * (Math.floor(k / 3) % 2);
+      mnote(S.lead, S.root + tone, t, len * (S.rh === SONGS.bonus.rh ? 0.9 : 1.6), S.lead === 'square' ? 0.05 : 0.11);
+    }
+    // a soft pad note on each bar
+    if (pos === 0) { mnote('sine', S.root - 12 + ch[1], t, len * 15, 0.06); mnote('sine', S.root - 12 + ch[2], t, len * 15, 0.05); }
+  }
+  function mtick() {
+    if (!ac || !mus.playing || muted) return;
+    var S = SONGS[mus.song];
+    while (mus.next < ac.currentTime + 0.15) {
+      var len = 60 / (S.bpm / mus.tempo) / 4;
+      var sw = S.swing ? (mus.step % 2 === 0 ? 1 + S.swing : 1 - S.swing) : 1;
+      try { mstep(S, mus.step, mus.next, len); } catch (e) {}
+      mus.next += len * sw; mus.step++;
+      if (mus.step % 16 === 0 && mus.want && mus.want !== mus.song) { mus.song = mus.want; S = SONGS[mus.song]; mus.step = 0; mus.idx = 0; }
+    }
+  }
+  function musicStart(song) {
+    if (!SONGS[song]) return;
+    mus.want = song;
+    if (!mus.on || !ensure()) return;
+    if (!mus.gain) { mus.gain = ac.createGain(); mus.gain.gain.value = 0.0001; mus.gain.connect(master); }
+    var now = ac.currentTime;
+    mus.gain.gain.cancelScheduledValues(now);
+    mus.gain.gain.setValueAtTime(Math.max(0.0001, mus.gain.gain.value), now);
+    mus.gain.gain.exponentialRampToValueAtTime(0.32, now + 0.6);
+    if (!mus.playing) { mus.playing = true; mus.song = song; mus.step = 0; mus.idx = 0; mus.next = now + 0.05; }
+    if (!mus.timer) mus.timer = setInterval(mtick, 30);
+    mtick();
+  }
+  function musicStop() {
+    mus.want = null;
+    if (!mus.playing) return;
+    mus.playing = false;
+    if (mus.gain && ac) { var now = ac.currentTime; mus.gain.gain.cancelScheduledValues(now); mus.gain.gain.setValueAtTime(Math.max(0.0001, mus.gain.gain.value), now); mus.gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35); }
+    if (mus.timer) { clearInterval(mus.timer); mus.timer = null; }
+  }
+
   return {
+    music: musicStart,
+    musicStop: musicStop,
+    musicTempo: function (m) { mus.tempo = Math.max(0.7, Math.min(1.3, m || 1)); },
+    setMusicOn: function (on) { mus.on = !!on; if (!mus.on) musicStop(); },
     play: function (name, arg) { if (!ensure()) return; try { sounds[name] && sounds[name](arg); } catch (e) {} },
     unlock: function () { ensure(); },
     setMuted: function (m) { muted = !!m; if (master) master.gain.value = muted ? 0 : 0.55; },
@@ -2954,6 +3035,7 @@ var OBSART = (function () {
     state = 'play';
     reset();
     goT = 0; SFX.play('go');
+    if (musicOn) SFX.music('jungle');
     startPanel.hidden = true;
     overPanel.hidden = true;
     pausePanel.hidden = true;
@@ -2967,6 +3049,7 @@ var OBSART = (function () {
     bonusCtl.hidden = true; jumpBtn.hidden = true; keys.left = keys.right = false;
     pausePanel.hidden = false;
     pauseBtn.hidden = true;
+    SFX.musicStop();
     SFX.play('click');
     setTimeout(function () { document.getElementById('resumeBtn').focus(); }, 30);
   }
@@ -2977,6 +3060,7 @@ var OBSART = (function () {
     pauseBtn.hidden = false;
     setPower(power);
     if (mode === 'bonus') setBonusUI(true);
+    if (musicOn) SFX.music(musicNow());
     last = performance.now();
     SFX.play('click');
   }
@@ -2993,9 +3077,27 @@ var OBSART = (function () {
     muted = !muted;
     try { localStorage.setItem('jameson-muted', muted ? '1' : '0'); } catch (e) {}
     syncMute();
-    if (!muted) { SFX.unlock(); SFX.play('click'); }
+    if (!muted) { SFX.unlock(); SFX.play('click'); if (musicOn && state === 'play') SFX.music(musicNow()); }
   });
   pauseBtn.addEventListener('click', pauseGame);
+  var musicOn = true;
+  try { musicOn = localStorage.getItem('jameson-music') !== '0'; } catch (e) {}
+  var musicBtn = document.getElementById('musicBtn');
+  function musicNow() { return mode === 'bonus' ? 'bonus' : zoneKey; }
+  function syncMusic() {
+    SFX.setMusicOn(musicOn);
+    musicBtn.setAttribute('aria-pressed', musicOn ? 'false' : 'true');
+    musicBtn.setAttribute('aria-label', musicOn ? 'Turn music off' : 'Turn music on');
+    if (musicOn && state === 'play') SFX.music(musicNow());
+  }
+  syncMusic();
+  musicBtn.addEventListener('click', function () {
+    musicOn = !musicOn;
+    try { localStorage.setItem('jameson-music', musicOn ? '1' : '0'); } catch (e) {}
+    SFX.unlock(); syncMusic();
+  });
+  // phones and tablets that can vibrate give a little buzz on big moments
+  function buzz(pattern) { try { if (!REDUCED && navigator.vibrate) navigator.vibrate(pattern); } catch (e) {} }
   document.getElementById('resumeBtn').addEventListener('click', resumeGame);
   document.getElementById('quitBtn').addEventListener('click', function () {
     state = 'play'; pausePanel.hidden = true; gameOver();
@@ -3004,6 +3106,7 @@ var OBSART = (function () {
 
   function gameOver(cause) {
     state = 'over';
+    SFX.musicStop();
     setPower(0);
     pauseBtn.hidden = true;
     setBonusUI(false);
@@ -3044,7 +3147,7 @@ var OBSART = (function () {
     impact = { x: hx, y: hy, t: 0 };
     crash = { t: 0, shown: false };
     P.vy = -640; P.onGround = false; P.spinT = 0; P.slowT = 0; P.shootT = 0;
-    flash = 1; freeze = 0.13; kick(0.5, 1.9);
+    flash = 1; freeze = 0.13; kick(0.5, 1.9); buzz([70, 50, 110]);
     sparkle(hx, hy, 16, ['#FFFFFF', '#FFE066', '#FF9A52']);
     ring(hx, hy, '#FFFFFF', 120);
   }
@@ -3195,7 +3298,7 @@ var OBSART = (function () {
       for (var jj = 0; jj < 18; jj++) { var aa = Math.random() * 6.28, ss = 120 + Math.random() * 280; sparks.push({ x: bcx, y: bcy, vx: Math.cos(aa) * ss, vy: Math.sin(aa) * ss, life: 0.45, max: 0.45, c: jj % 2 ? '#FFE066' : '#FFFFFF' }); }
       bonus += 3; blasts += 1;
       if (!quiet) popups.push({ x: bcx, y: GROUND - 80, text: 'BOOM! +3', life: 0.9, big: true });
-      ring(bcx, bcy, '#FFE066', 100); kick(0.3, 1.3); freeze = Math.max(freeze, 0.045); SFX.play('boom');
+      ring(bcx, bcy, '#FFE066', 100); kick(0.3, 1.3); buzz(30); freeze = Math.max(freeze, 0.045); SFX.play('boom');
       return;
     }
     var n = o.blocks.length;
@@ -3211,7 +3314,7 @@ var OBSART = (function () {
     var pts = 2 * n;
     bonus += pts; blasts += n;
     if (!quiet) popups.push({ x: o.x + o.w / 2, y: GROUND - o.h - 20, text: 'BOOM! +' + pts, life: 0.9, big: true });
-    ring(o.x + o.w / 2, GROUND - o.h / 2, '#FFE066', 70 + o.h * 0.6); kick(0.28, 1.15); freeze = Math.max(freeze, 0.035);
+    ring(o.x + o.w / 2, GROUND - o.h / 2, '#FFE066', 70 + o.h * 0.6); kick(0.28, 1.15); buzz(25); freeze = Math.max(freeze, 0.035);
     SFX.play('boom');
   }
 
@@ -3248,6 +3351,7 @@ var OBSART = (function () {
       banners = []; curBanner = null;
       banner(ZONE_NAMES[zoneKey] + '!', zoneKey === 'volcano' ? '#FF9A52' : zoneKey === 'beach' ? '#8FE2FF' : '#9BE27F', 2.4);
       SFX.play('zone');
+      if (musicOn) SFX.music(zoneKey);
     }
     if (zoneFade < 1) zoneFade = Math.min(1, zoneFade + dt / 1.6);
     var frac = (dist % ZONE_LEN) / ZONE_LEN;
@@ -3256,6 +3360,7 @@ var OBSART = (function () {
     P.slowT = Math.max(0, P.slowT - dt);
     vel = speed * (P.slowT > 0 ? 0.6 : 1);
     dist += vel * dt;
+    SFX.musicTempo(Math.pow(330 / Math.max(330, speed), 0.3));
     var windRate = Math.max(0, (vel - 430) / 240) + (power > 0 ? 0.5 : 0);
     if (!REDUCED && Math.random() < windRate * dt * 26) speedLines.push({ x: W + 20, y: 24 + Math.random() * (GROUND - 70), len: 70 + Math.random() * 150, v: vel * (1.9 + Math.random() * 0.8), a: 0.18 + Math.random() * 0.22 });
 
@@ -3380,7 +3485,7 @@ var OBSART = (function () {
           setPower(powerMax);
           SFX.play('power');
           popups.push({ x: g.x, y: gy, text: 'DINO POWER!', life: 1.1, big: true });
-          ring(g.x, gy, '#8FE2FF', 130); kick(0.15, 0.6);
+          ring(g.x, gy, '#8FE2FF', 130); kick(0.15, 0.6); buzz([20, 40, 20]);
           for (var z = 0; z < 20; z++) { var a = Math.random() * 6.28; sparks.push({ x: g.x, y: gy, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260, life: 0.5, max: 0.5, c: '#BFF0FF' }); }
         } else {
           var pts = g.kind === 'dino' ? 5 : 3;
@@ -3463,6 +3568,7 @@ var OBSART = (function () {
     B = buildBonus();
     for (var i = 0; i < 6; i++) spawnBolt();
     banner('Bonus world! Grab the bolts!', '#FFD23F', 2.2);
+    if (musicOn) SFX.music('bonus');
     setBonusUI(true);
   }
   // send bolts earned in the bonus world (also called if the game closes mid-bonus)
@@ -3481,6 +3587,7 @@ var OBSART = (function () {
     setBonusUI(false);
     if (savedPower > 0) setPower(savedPower);
     banner('+' + got + ' bolts!', '#FFD23F', 2);
+    if (musicOn) SFX.music(zoneKey);
     pushWallet(current);
   }
   function spawnBolt() {
