@@ -2960,7 +2960,7 @@ var OBSART = (function () {
     mode = 'run'; pickupsRun = 0; portalGap = PORTAL_EVERY; nextPortal = portalGap; portal = null; portalIn = 0; warp = null; B = null; grace = 0; rexCool = 0; savedPower = 0;
     keys.left = false; keys.right = false;
     rings = []; speedLines = []; confetti = []; crash = null; impact = null; flash = 0; freeze = 0; shakeMag = 1;
-    goT = 99; streak = 0; lastClose = -9; nextMilestone = 1000; lastTickSec = 0;
+    goT = 99; streak = 0; lastClose = -9; todName = 'day'; nextMilestone = 1000; lastTickSec = 0;
     setPower(0);
     setBonusUI(false);
   }
@@ -3284,6 +3284,76 @@ var OBSART = (function () {
   }
   function sceneOf(k) { return k === 'jungle' ? JUNGLE : ZONES[k]; }
 
+  // ---------- time of day: every DAY_LEN of distance the light moves on ----------
+  // m = multiply tint, g = horizon glow (screen), n = how much night (stars, moon, fireflies)
+  var DAY_LEN = 40000;
+  var TOD = [
+    { name: 'day',     m: [255, 255, 255], g: [0, 0, 0],        ga: 0,    n: 0 },
+    { name: 'sunset',  m: [255, 200, 160], g: [255, 120, 50],   ga: 0.38, n: 0.15 },
+    { name: 'night',   m: [125, 138, 205],  g: [60, 80, 170],    ga: 0.18, n: 1 },
+    { name: 'sunrise', m: [255, 210, 220], g: [255, 150, 185],  ga: 0.3,  n: 0.2 }
+  ];
+  var todName = 'day';
+  function todState() {
+    var x = (dist / DAY_LEN) % 4, i = Math.floor(x), f = x - i;
+    var k = f < 0.62 ? 0 : (f - 0.62) / 0.38; k = k * k * (3 - 2 * k);
+    var A = TOD[i], Bq = TOD[(i + 1) % 4];
+    function mix(a, b) { return a + (b - a) * k; }
+    return {
+      m: [mix(A.m[0], Bq.m[0]), mix(A.m[1], Bq.m[1]), mix(A.m[2], Bq.m[2])],
+      g: [mix(A.g[0], Bq.g[0]), mix(A.g[1], Bq.g[1]), mix(A.g[2], Bq.g[2])],
+      ga: mix(A.ga, Bq.ga), n: mix(A.n, Bq.n),
+      dom: (k < 0.5 ? A : Bq).name
+    };
+  }
+  function hash1(n) { var h = Math.sin(n * 127.1 + 311.7) * 43758.5453; return h - Math.floor(h); }
+  function timeOfDay(back) {
+    var st = todState(), str = back ? 1 : 0.38;
+    var mr = Math.round(255 - (255 - st.m[0]) * str), mg = Math.round(255 - (255 - st.m[1]) * str), mb = Math.round(255 - (255 - st.m[2]) * str);
+    if (mr < 254 || mg < 254 || mb < 254) {
+      ctx.save(); ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = 'rgb(' + mr + ',' + mg + ',' + mb + ')'; ctx.fillRect(-30, -30, W + 60, H + 60);
+      ctx.restore();
+    }
+    if (back) {
+      if (st.ga > 0.01) {
+        var gr = ctx.createLinearGradient(0, GROUND - 300, 0, GROUND + 10);
+        var gc = Math.round(st.g[0]) + ',' + Math.round(st.g[1]) + ',' + Math.round(st.g[2]);
+        gr.addColorStop(0, 'rgba(' + gc + ',0)'); gr.addColorStop(1, 'rgba(' + gc + ',' + st.ga + ')');
+        ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = gr; ctx.fillRect(-30, GROUND - 300, W + 60, 320); ctx.restore();
+      }
+      if (st.n > 0.05) {
+        // stars and a moon
+        for (var i = 0; i < 70; i++) {
+          var sx = hash1(i) * W, sy = hash1(i + 99) * (GROUND * 0.55), tw = 0.55 + 0.45 * Math.sin(t * (1.5 + hash1(i + 7) * 3) + i);
+          ctx.globalAlpha = st.n * tw * (0.5 + hash1(i + 3) * 0.5);
+          ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(sx, sy, 0.8 + hash1(i + 5) * 1.6, 0, 6.3); ctx.fill();
+        }
+        ctx.globalAlpha = st.n;
+        var mx = W - 150, my = 92;
+        glow(mx, my, 90, 'rgba(220,230,255,0.45)');
+        glow(mx, my, 50, 'rgba(255,250,225,0.7)'); ctx.fillStyle = '#FFFBEA'; ctx.beginPath(); ctx.arc(mx, my, 30, 0, 6.3); ctx.fill();
+        ctx.fillStyle = 'rgba(180,180,160,0.35)';
+        ctx.beginPath(); ctx.arc(mx - 9, my - 6, 6, 0, 6.3); ctx.arc(mx + 8, my + 9, 4.5, 0, 6.3); ctx.arc(mx + 10, my - 10, 3, 0, 6.3); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    } else if (st.n > 0.3 && zoneKey !== 'volcano') {
+      // fireflies drifting over the ground
+      for (var j = 0; j < 16; j++) {
+        var span = W + 200;
+        var fx = ((hash1(j + 40) * span - dist * 0.35 * (0.6 + hash1(j) * 0.5)) % span + span) % span - 100;
+        var fy = GROUND - 30 - hash1(j + 61) * 180 + Math.sin(t * (1 + hash1(j + 2)) + j) * 14;
+        var blinkA = Math.max(0, Math.sin(t * (2 + hash1(j + 9) * 2) + j * 1.7));
+        if (blinkA < 0.05) continue;
+        ctx.globalAlpha = (st.n - 0.3) / 0.7 * blinkA;
+        glow(fx, fy, 14, 'rgba(220,255,140,0.9)');
+        ctx.fillStyle = '#F6FFB8'; ctx.beginPath(); ctx.arc(fx, fy, 2.2, 0, 6.3); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    return st;
+  }
+
   function spawnGoodie(kind) {
     kind = kind || (Math.random() < 0.5 ? 'dino' : 'truck');
     var y = GROUND - 70 - Math.random() * 140;
@@ -3354,6 +3424,13 @@ var OBSART = (function () {
       if (musicOn) SFX.music(zoneKey);
     }
     if (zoneFade < 1) zoneFade = Math.min(1, zoneFade + dt / 1.6);
+    var tdn = todState().dom;
+    if (tdn !== todName) {
+      todName = tdn;
+      if (tdn === 'sunset') banner('Sunset run!', '#FFB067', 2.2);
+      else if (tdn === 'night') banner('Night run!', '#C8D4FF', 2.2);
+      else if (tdn === 'sunrise') banner('Good morning!', '#FFC3D6', 2.2);
+    }
     var frac = (dist % ZONE_LEN) / ZONE_LEN;
     var target = Math.min(690, 330 + zoneIdx * 75 + frac * 45);
     speed += (target - speed) * Math.min(1, dt * 0.8);
@@ -3908,6 +3985,7 @@ var OBSART = (function () {
       sceneOf(zoneKey).draw(fc, W, H, GROUND, dist, t);
       ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = zoneFade; ctx.drawImage(fadeCanvas, 0, 0); ctx.restore();
     } else sceneOf(zoneKey).draw(ctx, W, H, GROUND, dist, t);
+    if (!(mode === 'bonus' && B)) timeOfDay(true);
     if (speedLines.length) {
       ctx.lineCap = 'round'; ctx.lineWidth = 3;
       for (var wl = 0; wl < speedLines.length; wl++) {
@@ -4012,6 +4090,7 @@ var OBSART = (function () {
     ctx.globalAlpha = 1;
     if (impact) drawImpact(impact);
     if (mode !== 'bonus') sceneOf(zoneFade < 0.5 && prevZoneKey ? prevZoneKey : zoneKey).drawFront(ctx, W, H, GROUND, dist, t);
+    if (mode !== 'bonus') timeOfDay(false);
     var vg = ctx.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.45, W / 2, H * 0.45, Math.max(W, H) * 0.75);
     vg.addColorStop(0, 'rgba(10,30,20,0)'); vg.addColorStop(1, 'rgba(10,30,20,0.28)');
     ctx.fillStyle = vg; ctx.fillRect(-20, -20, W + 40, H + 40);
