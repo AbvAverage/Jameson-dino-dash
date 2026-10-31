@@ -336,7 +336,26 @@ button.go {
 }
 .chip[aria-pressed="true"] { background: var(--sun); box-shadow: 0 3px 0 var(--navy); }
 .chip:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
-.card.start { max-width: 540px; }
+.card.start { max-width: 780px; flex-direction: row; align-items: center; gap: 16px; }
+.card.start .col-main { flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; align-items: center; }
+.missions { flex: 0 1 260px; min-width: 0; background: #F2F7FD; border: 3px solid var(--navy); border-radius: 16px; padding: 8px 10px 9px; text-align: left; }
+.missions h3 { margin: 0 0 5px; font-family: var(--display); font-weight: 400; font-size: 17px; letter-spacing: 1px; color: #1C7FD6; }
+.missions ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.missions li { display: flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600; line-height: 1.2; }
+.missions .chk { flex: none; width: 19px; height: 19px; box-sizing: border-box; border-radius: 50%; border: 2.5px solid var(--navy); background: #fff; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.missions li.done .chk { background: #3BB54A; }
+.missions li.done .chk::after { content: '\2713'; }
+.missions li.done .txt { text-decoration: line-through; opacity: .55; }
+.missions .rw { margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 2px; font-weight: 700; color: #7A3E00; background: #FFF3C2; border-radius: 999px; padding: 1px 7px 1px 4px; font-size: 12.5px; }
+.missions .rw .ico { width: 14px; height: 14px; }
+.missions .mnote { margin: 6px 0 0; font-size: 11.5px !important; color: #4A5C7A; font-weight: 500; }
+@media (max-width: 640px) { .card.start { flex-direction: column; max-width: 400px; } .missions { flex: none; width: 100%; box-sizing: border-box; } }
+@media (max-width: 640px) and (orientation: portrait) { .card.start h2 { display: none; } .card.start .col-main { gap: 6px; } .missions { padding: 6px 9px; } .missions .mnote { display: none; } .missions h3 { font-size: 15px; margin-bottom: 3px; } .missions li { font-size: 12.5px; } .missions ul { gap: 3px; } }
+@media (max-height: 430px) { .missions .mnote { display: none; } .missions li { font-size: 12.5px; } .missions ul { gap: 3px; } }
+.bigscore .runbolts { margin: 6px 0 0; } .runbolts b { font-family: var(--body) !important; font-size: 15px !important; color: #7A3E00 !important; text-shadow: none !important; font-weight: 700 !important; }
+@media (max-height: 600px) { .bigscore .runbolts { margin: 0 0 0 6px; font-size: 13px; padding: 1px 9px; } .bigscore .runbolts b { font-size: 13px !important; } }
+.runbolts { margin: 0; display: inline-flex; align-items: center; gap: 0; font-weight: 700; color: #7A3E00; background: #FFF3C2; border: 2px solid var(--navy); border-radius: 999px; padding: 2px 12px; font-size: 15px; }
+.runbolts .ico { width: 18px; height: 18px; margin-right: 3px; }
 .card.start .col-main { gap: 7px; }
 .namebox { font-family: var(--body); font-weight: 700; font-size: 20px; color: var(--navy); text-align: center; width: min(280px, 100%); padding: 8px 14px; border: 3px solid var(--navy); border-radius: 14px; background: #fff; box-shadow: inset 0 2px 0 rgba(11, 42, 91, 0.12); }
 .namebox::placeholder { color: #7A8AA6; font-weight: 500; }
@@ -468,6 +487,11 @@ button.go, button.shopbtn { transition: transform .12s ease-out, box-shadow .12s
         <div class="startrow"><button class="go" id="startBtn" type="button">Play</button>
         <button class="shopbtn" id="shopBtnStart" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="#FFD23F" stroke="#7A3E00" stroke-width="1.6" stroke-linejoin="round"></path></svg>Dino Shop</button></div>
       </div>
+      <div class="missions" id="missions" aria-live="polite">
+        <h3>Today's missions</h3>
+        <ul id="missionList"></ul>
+        <p class="mnote">New missions every day. Bolts go to whoever is playing.</p>
+      </div>
     </div>
   </div>
 
@@ -488,7 +512,7 @@ button.go, button.shopbtn { transition: transform .12s ease-out, box-shadow .12s
       </div>
       <p class="shopwho" id="shopWho">Shopping for Chris</p>
       <div class="items" id="shopItems"></div>
-      <p class="shopnote">Earn bolts in the bonus world. Grab 20 dinos or trucks in one run to open the portal.</p>
+      <p class="shopnote">Earn bolts in the bonus world (grab 20 dinos or trucks in one run to open the portal), from daily missions, and a few at the end of every run.</p>
       <button class="go" id="shopBack" type="button">Back</button>
     </div>
   </div>
@@ -506,7 +530,7 @@ button.go, button.shopbtn { transition: transform .12s ease-out, box-shadow .12s
     <div class="card">
       <h2 id="overTitle">Oops! Bonk!</h2>
       <p class="newbest" id="newBest" hidden>New best for <span id="newBestName"></span>!</p>
-      <div class="bigscore"><span>SCORE</span><b id="finalScore">0</b></div>
+      <div class="bigscore"><span>SCORE</span><b id="finalScore">0</b><p class="runbolts" id="runBolts" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="#FFD23F" stroke="#7A3E00" stroke-width="1.6" stroke-linejoin="round"></path></svg>+<b id="runBoltsN">0</b>&nbsp;bolts for that run</p></div>
       <div class="stats"><span><b id="finalDinos">0</b> dinos</span><span><b id="finalTrucks">0</b> trucks</span><span><b id="finalBlasts">0</b> blasted</span></div>
       <button class="go" id="againBtn" type="button">Play again</button>
       <div class="row2"><button class="shopbtn" id="shopBtnOver" type="button"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="#FFD23F" stroke="#7A3E00" stroke-width="1.6" stroke-linejoin="round"></path></svg>Dino Shop</button><button class="link" id="switchBtn" type="button">Change name</button></div>
@@ -1230,7 +1254,11 @@ var SFX = (function () {
     streak: function (n) { var b = 660 * Math.pow(1.06, Math.min(n || 3, 14)); tone('triangle', b, b * 1.5, 0.12, 0.15); tone('sine', b * 2, null, 0.1, 0.07, 0.06); },
     close: function () { noise(0.22, 0.14, 3200, 500); tone('sine', 900, 1500, 0.12, 0.08, 0.04); },
     milestone: function () { [659, 784, 988, 1319].forEach(function (f, i) { tone('triangle', f, null, 0.16, 0.14, i * 0.07); }); },
-    tick: function () { tone('square', 1250, null, 0.045, 0.05); }
+    tick: function () { tone('square', 1250, null, 0.045, 0.05); },
+    pop: function () { tone('sine', 1300, 260, 0.16, 0.2); noise(0.1, 0.16, 6000, 1200); },
+    shield: function () { [659, 988, 1319].forEach(function (f, i) { tone('sine', f, f * 1.02, 0.2, 0.13, i * 0.05); }); },
+    rush: function () { [523, 659, 784, 988, 1175, 1568].forEach(function (f, i) { tone('triangle', f, null, 0.12, 0.13, i * 0.045); }); },
+    mission: function () { [784, 988, 1175, 1568, 1976].forEach(function (f, i) { tone('triangle', f, null, 0.16, 0.15, i * 0.08); }); }
   };
   // ---- background music: a little chiptune band per world, scheduled ahead on the audio clock ----
   var SONGS = {
@@ -2709,6 +2737,7 @@ var OBSART = (function () {
     sb.disabled = !current;
     document.getElementById('shopBtnStart').disabled = !current;
     renderBolts();
+    if (typeof renderMissions === 'function') renderMissions();
   }
   renderBoard();
 
@@ -3000,6 +3029,8 @@ var OBSART = (function () {
   var rings = [], confetti = [], speedLines = [], crash = null, impact = null, flash = 0, freeze = 0, shakeMag = 1;
   var lastRunScore = 0, overBest = false;
   var goT = 99, streak = 0, lastClose = -9, nextMilestone = 1000, lastTickSec = 0;
+  var rushT = 0, RUSH_TIME = 5;
+  var run = { closes: 0, maxStreak: 0, bonusVisits: 0, shieldSaves: 0 };
   var REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   var speed, dist, bonus, dinos, trucks, blasts, spawnIn, goodIn, powerIn, power, shake, t, dustIn;
   var ZONE_LEN = 20000, ZONE_KEYS = ['jungle', 'volcano', 'beach'], ZONE_NAMES = { jungle: 'JUNGLE RUN', volcano: 'VOLCANO VALLEY', beach: 'SUNNY BEACH' };
@@ -3019,7 +3050,8 @@ var OBSART = (function () {
     mode = 'run'; pickupsRun = 0; portalGap = PORTAL_EVERY; nextPortal = portalGap; portal = null; portalIn = 0; warp = null; B = null; grace = 0; rexCool = 0; savedPower = 0;
     keys.left = false; keys.right = false;
     rings = []; speedLines = []; confetti = []; crash = null; impact = null; flash = 0; freeze = 0; shakeMag = 1;
-    goT = 99; streak = 0; lastClose = -9; todName = 'day'; nextMilestone = 1000; lastTickSec = 0;
+    goT = 99; streak = 0; lastClose = -9; todName = 'day';
+    rushT = 0; run = { closes: 0, maxStreak: 0, bonusVisits: 0, shieldSaves: 0 }; nextMilestone = 1000; lastTickSec = 0;
     setPower(0);
     setBonusUI(false);
   }
@@ -3186,6 +3218,13 @@ var OBSART = (function () {
     document.getElementById('newBestName').textContent = nameOf(current);
     document.getElementById('newBest').hidden = !isBest;
     lastRunScore = s; overBest = isBest && s > 0;
+    var runBolts = current ? Math.min(15, Math.floor(s / 150)) : 0;
+    if (runBolts > 0) {
+      wal(current).bolts += runBolts; changed(current);
+      if (useOps) enqueue({ type: 'earn', id: current, n: runBolts }); else pushWallet(current);
+    }
+    document.getElementById('runBoltsN').textContent = runBolts;
+    document.getElementById('runBolts').hidden = runBolts <= 0;
     [['finalDinos', dinos, 'dino'], ['finalTrucks', trucks, 'truck']].forEach(function (c) {
       var el = document.getElementById(c[0]); if (el && el.nextSibling) el.nextSibling.nodeValue = ' ' + c[2] + (c[1] === 1 ? '' : 's');
     });
@@ -3200,6 +3239,71 @@ var OBSART = (function () {
   }
 
   // Jameson gets bonked: freeze-frame, flash, a comic burst, a back-flip and a bounce, then dizzy stars
+  // ---------- daily missions: three goals a day, each pays bolts once per player ----------
+  var MISSION_POOL = [
+    { id: 'dino10', text: 'Grab 10 dinos in one run', bolts: 10, test: function () { return dinos >= 10; } },
+    { id: 'dino20', text: 'Grab 20 dinos in one run', bolts: 20, test: function () { return dinos >= 20; } },
+    { id: 'truck10', text: 'Grab 10 trucks in one run', bolts: 10, test: function () { return trucks >= 10; } },
+    { id: 'blast8', text: 'Blast 8 blocks in one run', bolts: 15, test: function () { return blasts >= 8; } },
+    { id: 'volcano', text: 'Reach Volcano Valley', bolts: 15, test: function () { return zoneIdx >= 1; } },
+    { id: 'beach', text: 'Reach Sunny Beach', bolts: 25, test: function () { return zoneIdx >= 2; } },
+    { id: 'score1000', text: 'Score 1,000 in one run', bolts: 15, test: function () { return score() >= 1000; } },
+    { id: 'score2500', text: 'Score 2,500 in one run', bolts: 25, test: function () { return score() >= 2500; } },
+    { id: 'bonus', text: 'Visit the bonus world', bolts: 20, test: function () { return run.bonusVisits >= 1; } },
+    { id: 'close3', text: 'Get 3 close calls in one run', bolts: 15, test: function () { return run.closes >= 3; } },
+    { id: 'streak6', text: 'Grab 6 in a row', bolts: 15, test: function () { return run.maxStreak >= 6; } },
+    { id: 'shield', text: 'Get saved by a shield', bolts: 15, test: function () { return run.shieldSaves >= 1; } }
+  ];
+  function todayKey() { var d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+  function todaysMissions() {
+    var key = todayKey(), h = 2166136261;
+    for (var i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    var pool = MISSION_POOL.slice(), out = [];
+    while (out.length < 3) { h = (Math.imul(h, 1103515245) + 12345) >>> 0; var m = pool.splice(h % pool.length, 1)[0]; if (out.some(function (o) { return o.id.slice(0, 4) === m.id.slice(0, 4) && o.id !== m.id && (m.id.indexOf('dino') === 0 || m.id.indexOf('score') === 0); })) continue; out.push(m); }
+    return out;
+  }
+  var missionsToday = todaysMissions(), missionDone = { day: todayKey(), players: {} };
+  try { var md = JSON.parse(localStorage.getItem('jameson-missions') || 'null'); if (md && md.day === todayKey() && md.players) missionDone = md; } catch (e) {}
+  function doneFor(id) { return missionDone.players[id] || (missionDone.players[id] = []); }
+  function renderMissions() {
+    var ul = document.getElementById('missionList'); if (!ul || !missionsToday) return;
+    if (missionDone.day !== todayKey()) { missionDone = { day: todayKey(), players: {} }; missionsToday = todaysMissions(); }
+    var done = current ? doneFor(current) : [];
+    ul.replaceChildren.apply(ul, missionsToday.map(function (m) {
+      var li = document.createElement('li'); if (done.indexOf(m.id) >= 0) li.className = 'done';
+      li.innerHTML = '<span class="chk" aria-hidden="true"></span><span class="txt"></span><span class="rw"><svg class=\"ico\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M13 2L4 14h7l-1 8 9-12h-7z\" fill=\"#FFD23F\" stroke=\"#7A3E00\" stroke-width=\"1.6\" stroke-linejoin=\"round\"></path></svg>+' + m.bolts + '</span>';
+      li.querySelector('.txt').textContent = m.text + (done.indexOf(m.id) >= 0 ? ' (done)' : '');
+      return li;
+    }));
+  }
+  function checkMissions() {
+    if (!current || !missionsToday) return;
+    var done = doneFor(current);
+    for (var i = 0; i < missionsToday.length; i++) {
+      var m = missionsToday[i];
+      if (done.indexOf(m.id) >= 0 || !m.test()) continue;
+      done.push(m.id);
+      try { localStorage.setItem('jameson-missions', JSON.stringify(missionDone)); } catch (e) {}
+      wal(current).bolts += m.bolts; changed(current);
+      if (useOps) enqueue({ type: 'earn', id: current, n: m.bolts }); else pushWallet(current);
+      popups.push({ x: W / 2, y: H * 0.34, text: 'Mission done! +' + m.bolts + ' bolts', life: 1.8, big: true, col: '#7BE07A' });
+      banner(m.text + ' ✓', '#B6F0A4', 2.4);
+      SFX.play('mission'); buzz([15, 40, 15]);
+      if (!REDUCED) for (var mc = 0; mc < 30; mc++) confetti.push({ x: W / 2 + (Math.random() - 0.5) * 300, y: H * 0.34, vx: (Math.random() - 0.5) * 340, vy: -200 - Math.random() * 160, r: Math.random() * 6, vr: (Math.random() - 0.5) * 12, w: 7 + Math.random() * 6, h: 4 + Math.random() * 3, c: ['#7BE07A', '#FFD23F', '#4FC8FF', '#FF9AE0'][mc % 4], sw: Math.random() * 6, life: 1.6, g: 520 });
+      renderMissions();
+    }
+  }
+  renderMissions();
+  function useShield() {
+    if (!P.shield) return false;
+    P.shield = false; grace = 1.1; run.shieldSaves++;
+    var sy = P.y - (riding() ? 100 : 78);
+    ring(P.x, sy, '#9EF0FF', 150); ring(P.x, sy, '#FFFFFF', 110);
+    sparkle(P.x, sy, 18, ['#FFFFFF', '#9EF0FF', '#CFF6FF']);
+    popups.push({ x: P.x + 50, y: sy - 90, text: 'SAVED!', life: 1, big: true, col: '#9EF0FF' });
+    SFX.play('pop'); kick(0.25, 1); buzz(40);
+    return true;
+  }
   function startCrash(cause) {
     var r = riding();
     var hx = P.x + (r ? 70 : 44), hy = cause === 'ptero' ? P.y - (r ? 165 : 118) : P.y - (r ? 70 : 42);
@@ -3467,10 +3571,16 @@ var OBSART = (function () {
     for (var sl = speedLines.length - 1; sl >= 0; sl--) { var ln = speedLines[sl]; ln.x -= ln.v * dt; if (ln.x + ln.len < -20) speedLines.splice(sl, 1); }
     if (crash) updateCrash(dt);
     if (state !== 'play') return;
+    checkMissions();
     updateBanners(dt);
     if (warp) { updateWarp(dt); return; }
     if (mode === 'bonus') { updateBonus(dt); return; }
     grace = Math.max(0, grace - dt);
+    if (rushT > 0) {
+      rushT = Math.max(0, rushT - dt);
+      if (!REDUCED) for (var rt = 0; rt < 3; rt++) sparks.push({ x: P.x - 18 - Math.random() * 18, y: P.y - 15 - Math.random() * 130, vx: -vel * 0.7, vy: (Math.random() - 0.5) * 30, life: 0.45, max: 0.45, c: 'hsl(' + Math.round((t * 500 + rt * 120) % 360) + ',95%,62%)', star: true, rot: Math.random() * 6, sz: 4 + Math.random() * 3 });
+      if (rushT === 0) popups.push({ x: P.x + 40, y: P.y - 170, text: 'Rush over!', life: 0.8, col: '#FFFFFF' });
+    }
     rexCool = Math.max(0, rexCool - dt);
 
     // zones: every ZONE_LEN of distance the world changes and the pace steps up
@@ -3494,7 +3604,7 @@ var OBSART = (function () {
     var target = Math.min(690, 330 + zoneIdx * 75 + frac * 45);
     speed += (target - speed) * Math.min(1, dt * 0.8);
     P.slowT = Math.max(0, P.slowT - dt);
-    vel = speed * (P.slowT > 0 ? 0.6 : 1);
+    vel = speed * (P.slowT > 0 && rushT <= 0 ? 0.6 : 1) * (rushT > 0 ? 1.4 : 1);
     dist += vel * dt;
     SFX.musicTempo(Math.pow(330 / Math.max(330, speed), 0.3));
     var windRate = Math.max(0, (vel - 430) / 240) + (power > 0 ? 0.5 : 0);
@@ -3526,7 +3636,11 @@ var OBSART = (function () {
     if (portal) nextAt = Math.max(nextAt, t + leadTime() + 1.2);
     else if (t + leadTime() >= nextAt) spawnPattern();
     goodIn -= vel * dt;
-    if (goodIn <= 0) { spawnGoodie(); goodIn = 260 + Math.random() * 420; }
+    if (goodIn <= 0) {
+      var roll = Math.random();
+      spawnGoodie(roll < 0.05 && !P.shield && t > 8 ? 'shield' : roll > 0.965 && rushT <= 0 && t > 15 ? 'rush' : null);
+      goodIn = 260 + Math.random() * 420;
+    }
     if (power <= 0) {
       powerIn -= dt;
       if (powerIn <= 0) { spawnGoodie('power'); powerIn = 11 + Math.random() * 6; }
@@ -3571,12 +3685,24 @@ var OBSART = (function () {
         else if (o.x + o.w < px1) {
           o.passed = true;
           if (o.minClear !== undefined && o.minClear > -4 && o.minClear < 24 && t - lastClose > 1.5 && grace <= 0 && !riding()) {
-            lastClose = t;
+            lastClose = t; run.closes++;
             popups.push({ x: P.x + 40, y: P.y - 175, text: 'Close one!', life: 0.9, col: '#FFFFFF' });
             sparkle(o.x + o.w / 2, GROUND - o.h - 6, 8, ['#FFFFFF', '#FFE066']);
             SFX.play('close');
           }
         }
+      }
+      if (rushT > 0) {
+        // rainbow rush: smash straight through
+        var smash = o.type === 'ptero' ? (px2 > o.x + 5 && px1 < o.x + 65 && P.y - 170 < o.y + 18) : o.type !== 'mud' && px2 > o.x && px1 < o.x + o.w && P.y > GROUND - o.h - 6;
+        if (smash) {
+          if (o.type === 'ptero') {
+            bonus += 5; ring(o.x + 35, o.y, '#FFFFFF', 90); sparkle(o.x + 35, o.y, 14, ['#FFFFFF', '#FFE066', '#FF9AE0']);
+            popups.push({ x: o.x + 35, y: o.y - 30, text: 'POW! +5', life: 0.9, big: true }); SFX.play('boom'); kick(0.2, 1); buzz(25);
+          } else explode(o);
+          obstacles.splice(j, 1);
+        }
+        continue;
       }
       if (grace > 0) continue;
       if (o.type === 'mud') {
@@ -3593,7 +3719,7 @@ var OBSART = (function () {
       if (o.type === 'ptero') {
         var topY = P.y - (riding() ? 175 : 125);
         var ox = o.x + 35;
-        if (px2 > ox - 26 && px1 < ox + 26 && topY < o.y + 18 && P.y - 20 > o.y - 22) { gameOver('ptero'); return; }
+        if (px2 > ox - 26 && px1 < ox + 26 && topY < o.y + 18 && P.y - 20 > o.y - 22) { if (useShield()) continue; gameOver('ptero'); return; }
         continue;
       }
       if (px2 > o.x + 6 && px1 < o.x + o.w - 6 && P.y > GROUND - o.h + (o.type === 'boulder' ? 10 : 4)) {
@@ -3603,19 +3729,33 @@ var OBSART = (function () {
           popups.push({ x: Math.min(W - 120, o.x + 140), y: GROUND - 250, text: 'STOMP! +' + stompPts, life: 1, big: true });
           continue;
         }
+        if (useShield()) continue;
         gameOver(o.type); return;
       }
     }
     for (var k = goodies.length - 1; k >= 0; k--) {
       var g = goodies[k];
       g.x -= vel * dt;
-      if (g.kind !== 'power' && has(current, 'magnet')) {
+      if ((g.kind === 'dino' || g.kind === 'truck') && has(current, 'magnet')) {
         var mdx = P.x - g.x, mdy = (P.y - 85) - g.y;
         if (mdx > -240 && mdx < 60 && Math.abs(mdy) < 220) { var pull = Math.min(1, dt * 6); g.x += mdx * pull; g.y += mdy * pull; }
       }
-      if (g.x < -60) { if (g.kind !== 'power') streak = 0; goodies.splice(k, 1); continue; }
+      if (g.x < -60) { if (g.kind === 'dino' || g.kind === 'truck') streak = 0; goodies.splice(k, 1); continue; }
       var gy = g.y + Math.sin(t * 4 + g.bob) * 6;
       if (Math.abs(g.x - P.x) < 40 && Math.abs(gy - (P.y - 85)) < 85) {
+        if (g.kind === 'shield') {
+          P.shield = true; SFX.play('shield'); buzz(20);
+          popups.push({ x: g.x, y: gy, text: 'SHIELD!', life: 1.1, big: true, col: '#9EF0FF' });
+          ring(g.x, gy, '#9EF0FF', 120); sparkle(g.x, gy, 12, ['#FFFFFF', '#9EF0FF']);
+          goodies.splice(k, 1); continue;
+        }
+        if (g.kind === 'rush') {
+          rushT = RUSH_TIME; SFX.play('rush'); buzz([20, 30, 20, 30, 20]); kick(0.2, 0.8);
+          popups.push({ x: g.x, y: gy, text: 'RAINBOW RUSH!', life: 1.2, big: true, col: '#FF9AE0' });
+          ring(g.x, gy, '#FFFFFF', 150);
+          sparkle(g.x, gy, 18, ['#FF5E5E', '#FFB13B', '#FFE94A', '#5EE07A', '#4FC8FF', '#B07BFF']);
+          goodies.splice(k, 1); continue;
+        }
         if (g.kind === 'power') {
           powerMax = has(current, 'power') ? 14 : POWER_TIME;
           setPower(powerMax);
@@ -3627,7 +3767,7 @@ var OBSART = (function () {
           var pts = g.kind === 'dino' ? 5 : 3;
           bonus += pts;
           if (g.kind === 'dino') dinos++; else trucks++;
-          streak++;
+          streak++; run.maxStreak = Math.max(run.maxStreak, streak);
           if (streak >= 3) {
             SFX.play('streak', streak);
             popups.push({ x: g.x, y: gy - 50, text: streak + ' in a row!', life: 0.95, col: '#FF9A52' });
@@ -3697,7 +3837,7 @@ var OBSART = (function () {
     return { time: BONUS_TIME, plats: plats, bolts: [], stars: [], got: 0, sent: 0, starIn: 1.2, boltIn: 0 };
   }
   function enterBonus() {
-    mode = 'bonus';
+    mode = 'bonus'; run.bonusVisits++;
     savedPower = power; setPower(0);
     obstacles = []; goodies = []; shots = []; portal = null; portalIn = 0;
     P.x = Math.max(80, W * 0.12); P.y = GROUND; P.vy = 0; P.jumps = 0; P.onGround = true; P.face = 1; P.spinT = 0; P.spin = 0;
@@ -4014,6 +4154,26 @@ var OBSART = (function () {
     ctx.restore();
   }
 
+  function drawShieldOrb(x, y) {
+    glow(x, y, 50, 'rgba(150,235,255,0.6)');
+    bubble(x, y, 32);
+    ctx.save(); ctx.translate(x, y + Math.sin(t * 3) * 1.5);
+    ctx.beginPath(); ctx.moveTo(0, -17); ctx.quadraticCurveTo(10, -13, 15, -13); ctx.quadraticCurveTo(15, 6, 0, 18); ctx.quadraticCurveTo(-15, 6, -15, -13); ctx.quadraticCurveTo(-10, -13, 0, -17); ctx.closePath();
+    var sg = ctx.createLinearGradient(0, -17, 0, 18); sg.addColorStop(0, '#E8FBFF'); sg.addColorStop(1, '#4FC8FF');
+    ctx.fillStyle = sg; ctx.fill(); ctx.lineWidth = 2.6; ctx.strokeStyle = '#0B2A5B'; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.moveTo(0, -11); ctx.lineTo(0, 12); ctx.quadraticCurveTo(-10, 4, -10, -8); ctx.closePath(); ctx.globalAlpha = 0.55; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+  function drawRushOrb(x, y) {
+    var cols = ['#FF5E5E', '#FFB13B', '#FFE94A', '#5EE07A', '#4FC8FF', '#B07BFF'];
+    glow(x, y, 56, 'hsla(' + Math.round((t * 200) % 360) + ',95%,70%,0.6)');
+    ctx.save(); ctx.translate(x, y); ctx.rotate(t * 2.5);
+    ctx.lineWidth = 6; ctx.lineCap = 'round';
+    for (var i = 0; i < 6; i++) { ctx.strokeStyle = cols[i]; ctx.beginPath(); ctx.arc(0, 0, 27, i * Math.PI / 3 + 0.08, (i + 1) * Math.PI / 3 - 0.08); ctx.stroke(); }
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(x, y, 20, 0, 6.3); ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = '#0B2A5B'; ctx.stroke();
+    drawStar(x, y, 15 + Math.sin(t * 8) * 1.5, '#FFD23F', -t);
+  }
   function drawShot(s) {
     glow(s.x, s.y, 30, 'rgba(120,220,255,0.8)');
     var g = ctx.createRadialGradient(s.x - 3, s.y - 3, 1, s.x, s.y, 13);
@@ -4058,6 +4218,8 @@ var OBSART = (function () {
       var g = goodies[i];
       var gy = g.y + Math.sin(t * 4 + g.bob) * 6;
       if (g.kind === 'power') { drawPower(g.x, gy); continue; }
+      if (g.kind === 'shield') { drawShieldOrb(g.x, gy); continue; }
+      if (g.kind === 'rush') { drawRushOrb(g.x, gy); continue; }
       var wob = 1 + Math.sin(t * 5 + g.bob) * 0.035;
       ctx.save(); ctx.translate(g.x, gy); ctx.scale(wob, 2 - wob); ctx.translate(-g.x, -gy);
       if (g.kind === 'dino') drawDino(g.x, gy); else drawTruck(g.x, gy);
@@ -4106,6 +4268,14 @@ var OBSART = (function () {
         drawStar(orx, ory, 6, '#E6FAFF', oa * 2);
       }
     }
+    if (rushT > 0 && state === 'play' && !(rushT < 1.2 && Math.floor(t * 10) % 2 === 0)) {
+      var rhue = Math.round((t * 420) % 360), rup = riding() ? 40 : 0;
+      glow(P.x, P.y - 80 - rup, 120, 'hsla(' + rhue + ',95%,65%,0.6)');
+      glow(P.x, P.y - 80 - rup, 70, 'hsla(' + ((rhue + 120) % 360) + ',95%,70%,0.45)');
+      ctx.save(); ctx.translate(P.x, P.y - 80 - rup); ctx.rotate(t * 4); ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.globalAlpha = 0.75;
+      for (var rc = 0; rc < 6; rc++) { ctx.strokeStyle = ['#FF5E5E', '#FFB13B', '#FFE94A', '#5EE07A', '#4FC8FF', '#B07BFF'][rc]; ctx.beginPath(); ctx.arc(0, 0, 92 + rup * 0.5, rc * Math.PI / 3 + 0.1, (rc + 1) * Math.PI / 3 - 0.1); ctx.stroke(); }
+      ctx.restore();
+    }
     if (blink) ctx.globalAlpha = 0.45;
     var moving = mode === 'bonus' ? (keys.left !== keys.right) : true;
     JAM.draw(ctx, head, P.x, baseY, {
@@ -4114,6 +4284,17 @@ var OBSART = (function () {
       outfit: wal(current).outfit, ride: riding(), roar: P.roarT > 0, face: P.face, idle: P.onGround && !moving
     });
     ctx.globalAlpha = 1;
+    if (P.shield && state === 'play') {
+      var sr = riding() ? 118 : 86, sw = 1 + Math.sin(t * 5) * 0.03, scx = P.x + (riding() ? 18 : 0), scy = P.y - (riding() ? 100 : 80);
+      ctx.save(); ctx.translate(scx, scy); ctx.scale(sw, 2 - sw);
+      var shg = ctx.createRadialGradient(-sr * 0.3, -sr * 0.35, sr * 0.1, 0, 0, sr);
+      shg.addColorStop(0, 'rgba(255,255,255,0.25)'); shg.addColorStop(0.7, 'rgba(160,235,255,0.12)'); shg.addColorStop(1, 'rgba(120,220,255,0.35)');
+      ctx.fillStyle = shg; ctx.beginPath(); ctx.arc(0, 0, sr, 0, 6.3); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(0, 0, sr * 0.8, Math.PI * 1.1, Math.PI * 1.4); ctx.stroke();
+      ctx.restore();
+    }
     if (crash && crash.t > 0.55 && state === 'over') {
       var hy2 = P.y - (riding() ? 215 : 172), ka = Math.min(1, (crash.t - 0.55) * 4);
       for (var di = 0; di < 3; di++) {
@@ -4287,7 +4468,7 @@ var OBSART = (function () {
   requestAnimationFrame(frame);
 
   // test hook for screenshots only
-  window.__jd = { start: start, jump: jump, blast: blast, power: function () { setPower(POWER_TIME); }, pause: pauseGame, goodie: spawnGoodie, warp: startWarp, setKey: function (k, v) { keys[k] = v; }, addBolts: function (n) { wal(current).bolts += n; changed(current); if (useOps) enqueue({ type: 'earn', id: current, n: n }); }, queue: function () { return queue; }, B: function () { return B; }, mode: function () { return mode; }, shop: openShop, grabs: function (n) { pickupsRun += n; if (pickupsRun >= nextPortal && !portal) portalIn = 0.1; }, step: function (dt) { update(dt); }, st: function () { return { state: state, vel: vel, speed: speed, dist: dist, mode: mode, zi: zoneIdx, grace: grace }; }, setGrace: function (g) { grace = g; }, spawn: spawnObstacle, pattern: function (n) { spawnPattern(n); }, setDist: function (d) { dist = d; }, zone: function () { return zoneKey; }, obs: function () { return obstacles; }, P: function () { return P; } };
+  window.__jd = { start: start, jump: jump, blast: blast, power: function () { setPower(POWER_TIME); }, pause: pauseGame, goodie: spawnGoodie, warp: startWarp, setKey: function (k, v) { keys[k] = v; }, addBolts: function (n) { wal(current).bolts += n; changed(current); if (useOps) enqueue({ type: 'earn', id: current, n: n }); }, queue: function () { return queue; }, B: function () { return B; }, mode: function () { return mode; }, shop: openShop, grabs: function (n) { pickupsRun += n; if (pickupsRun >= nextPortal && !portal) portalIn = 0.1; }, step: function (dt) { update(dt); }, st: function () { return { state: state, vel: vel, speed: speed, dist: dist, mode: mode, zi: zoneIdx, grace: grace }; }, setGrace: function (g) { grace = g; }, spawn: spawnObstacle, pattern: function (n) { spawnPattern(n); }, setDist: function (d) { dist = d; }, zone: function () { return zoneKey; }, obs: function () { return obstacles; }, P: function () { return P; }, shieldOn: function () { P.shield = true; }, rush: function () { rushT = RUSH_TIME; }, runStats: function () { return run; } };
 })();
 </script>
 
