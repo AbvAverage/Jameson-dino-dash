@@ -40,3 +40,18 @@ Commit `a51ce2e` on `main` is the site exactly as it was before the landing page
 npm install
 npm test
 ```
+
+## Hosting on Cloudflare (current)
+
+The site now runs on Cloudflare Workers (free plan):
+
+- `public/` is served as static files (landing page at `/`, game at `/play/`, `/game` redirects there).
+- `/api/board` is the family score server: `worker/index.mjs`, one Durable Object that handles
+  saves one at a time, using the same rules as before (`lib/boardlib.mjs`).
+- On its very first start the server copies the board from the old Netlify site once; if that
+  site is gone it starts from the built-in scores.
+- `wrangler.jsonc` holds the config. Cloudflare's GitHub integration deploys every push to `main`
+  (`npx wrangler deploy`).
+
+Local run: `npm install`, then `npx wrangler dev` and open http://localhost:8787.
+Test the Cloudflare version end to end: `E2E_SITE=http://localhost:8787 python3 test/e2e.py`.

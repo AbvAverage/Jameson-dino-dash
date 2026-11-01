@@ -4,9 +4,14 @@
   "type": "module",
   "scripts": {
     "test": "node test/boardlib.test.mjs && node test/landing-art.test.mjs",
-    "build:landing": "node scripts/build-landing-art.mjs"
+    "build:landing": "node scripts/build-landing-art.mjs",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
     "@netlify/blobs": "10.7.13"
+  },
+  "devDependencies": {
+    "wrangler": "4.156.0"
   }
 }

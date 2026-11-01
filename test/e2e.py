@@ -1,8 +1,12 @@
 # End-to-end: real game page + real score-server code, several separate "devices".
 from playwright.sync_api import sync_playwright
 import json, urllib.request
-U='http://localhost:8899/'
-def board(): return json.load(urllib.request.urlopen(U+'api/board'))
+import os
+# E2E_SITE=http://localhost:8787 tests the Cloudflare version (game at /play/); default is the Netlify stand-in
+SITE=os.environ.get('E2E_SITE')
+U=(SITE.rstrip('/')+'/play/') if SITE else 'http://localhost:8899/'
+API=(SITE.rstrip('/')+'/api/board') if SITE else U+'api/board'
+def board(): return json.load(urllib.request.urlopen(API))
 def run_until_over(pg):
     pg.click('#startBtn')
     for i in range(300):
@@ -44,7 +48,7 @@ with sync_playwright() as p:
     check('both earnings counted (60 + 50 + 50 = 160)', board()['players']['addy'].get('bolts') == 160, board()['players']['addy'].get('bolts'))
     # 5. can't buy what you can't afford, even if the device thinks you can
     t.evaluate("(function(){ return 1; })()")
-    req = urllib.request.Request(U+'api/board', data=json.dumps({'op': {'id':'jameson','type':'buy','item':'rex','opId':'cheat-1'}}).encode(), headers={'content-type':'application/json'}, method='POST')
+    req = urllib.request.Request(API, data=json.dumps({'op': {'id':'jameson','type':'buy','item':'rex','opId':'cheat-1'}}).encode(), headers={'content-type':'application/json'}, method='POST')
     try: urllib.request.urlopen(req); refused=False
     except urllib.error.HTTPError as e: refused = e.code == 409
     check('server refuses a Rex nobody paid for', refused and 'rex' not in (board()['players']['jameson'].get('owned') or []))

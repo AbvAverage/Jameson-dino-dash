@@ -2,3 +2,5 @@ node_modules/
 .netlify/
 *.png
 !public/assets/jameson-head.png
+.wrangler/
+.dev.vars

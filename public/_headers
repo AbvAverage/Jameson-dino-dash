@@ -1,0 +1,12 @@
+# Pages always fetch fresh so updates show up right away.
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/play/
+  Cache-Control: no-cache
+/play/index.html
+  Cache-Control: no-cache
+# Landing page code and art: cache, but check back for changes.
+/assets/*
+  Cache-Control: public, max-age=3600, must-revalidate
