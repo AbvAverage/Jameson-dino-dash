@@ -117,6 +117,15 @@ h1 {
 }
 .scores { display: flex; gap: 8px; }
 .titlewrap { display: flex; align-items: center; gap: 12px; min-width: 0; }
+/* while a run is going, keep the screen clean: only the pause button stays; sound, music and Home live on the pause card */
+body.playing #muteBtn, body.playing #musicBtn { display: none; }
+body.playing a.homebtn { visibility: hidden; }
+.pausetoggles { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.ptoggle { font-family: var(--body); font-weight: 700; font-size: 16px; color: var(--navy); background: #EAF4FE; border: 3px solid var(--navy); border-radius: 999px; padding: 6px 16px; min-height: 42px; cursor: pointer; }
+.ptoggle b { color: #1F7A35; }
+.ptoggle[aria-pressed="false"] { background: #F1F3F7; color: #5B6B86; }
+.ptoggle[aria-pressed="false"] b { color: #C0392B; }
+.ptoggle:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
 a.homebtn {
   flex: none; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
   font-family: var(--display); font-size: 17px; letter-spacing: 1px; color: var(--navy);
@@ -549,6 +558,10 @@ button.go, button.shopbtn { transition: transform .12s ease-out, box-shadow .12s
       <h2>Paused</h2>
       <p>Jameson is catching his breath.</p>
       <button class="go" id="resumeBtn" type="button">Keep going</button>
+      <div class="pausetoggles">
+        <button class="ptoggle" id="pSound" type="button" aria-pressed="true">Sound <b>On</b></button>
+        <button class="ptoggle" id="pMusic" type="button" aria-pressed="true">Music <b>On</b></button>
+      </div>
       <div class="row2"><button class="link" id="quitBtn" type="button">End this run</button><a class="link" href="/">Home</a></div>
     </div>
   </div>
@@ -3189,6 +3202,8 @@ var OBSART = (function () {
     SFX.setMuted(muted);
     muteBtn.setAttribute('aria-pressed', muted ? 'true' : 'false');
     muteBtn.setAttribute('aria-label', muted ? 'Turn sound on' : 'Mute sound');
+    var ps = document.getElementById('pSound');
+    if (ps) { ps.setAttribute('aria-pressed', muted ? 'false' : 'true'); ps.querySelector('b').textContent = muted ? 'Off' : 'On'; }
   }
   syncMute();
   muteBtn.addEventListener('click', function () {
@@ -3206,6 +3221,8 @@ var OBSART = (function () {
     SFX.setMusicOn(musicOn);
     musicBtn.setAttribute('aria-pressed', musicOn ? 'false' : 'true');
     musicBtn.setAttribute('aria-label', musicOn ? 'Turn music off' : 'Turn music on');
+    var pm = document.getElementById('pMusic');
+    if (pm) { pm.setAttribute('aria-pressed', musicOn ? 'true' : 'false'); pm.querySelector('b').textContent = musicOn ? 'On' : 'Off'; }
     if (musicOn && state === 'play') SFX.music(musicNow());
   }
   syncMusic();
@@ -3217,6 +3234,8 @@ var OBSART = (function () {
   // phones and tablets that can vibrate give a little buzz on big moments
   function buzz(pattern) { try { if (!REDUCED && navigator.vibrate) navigator.vibrate(pattern); } catch (e) {} }
   document.getElementById('resumeBtn').addEventListener('click', resumeGame);
+  document.getElementById('pSound').addEventListener('click', function () { muteBtn.click(); });
+  document.getElementById('pMusic').addEventListener('click', function () { musicBtn.click(); });
   document.getElementById('quitBtn').addEventListener('click', function () {
     state = 'play'; pausePanel.hidden = true; gameOver();
   });
@@ -4531,6 +4550,8 @@ var OBSART = (function () {
   function frame(now) {
     var dt = Math.min(0.033, (now - last) / 1000);
     last = now;
+    var playingNow = state === 'play' || state === 'paused';
+    if (document.body.classList.contains('playing') !== playingNow) document.body.classList.toggle('playing', playingNow);
     if (freeze > 0) freeze -= dt;
     else if (state !== 'paused') update(dt);
     draw();
