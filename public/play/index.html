@@ -3166,6 +3166,7 @@ var OBSART = (function () {
     state = 'play';
     reset();
     goT = 0; SFX.play('go');
+    runsHere++; try { localStorage.setItem('jameson-runs', String(runsHere)); } catch (e) {}
     if (musicOn) SFX.music('jungle');
     startPanel.hidden = true;
     overPanel.hidden = true;
@@ -3462,8 +3463,10 @@ var OBSART = (function () {
     nextAt = T0 + dur + (0.95 + Math.random() * 0.75) * (1 - Math.min(0.2, zoneIdx * 0.04));
   }
   function spawnObstacle() { addBlocks(0, 1, 1); }
+  var runsHere = 0;
+  try { runsHere = +(localStorage.getItem('jameson-runs') || 0); } catch (e) {}
   function hint(key, text) {
-    if (hintShown[key]) return;
+    if (hintShown[key] || runsHere > 4) return;
     hintShown[key] = true;
     banner(text, '#FFE066', 2.2);
   }
@@ -3482,10 +3485,10 @@ var OBSART = (function () {
     var a = Math.min(1, el / 0.18, b.life / 0.3);
     var sc = 0.85 + 0.15 * Math.min(1, el / 0.18);
     ctx.save(); ctx.globalAlpha = Math.max(0, a);
-    ctx.translate(W / 2, mode === 'bonus' ? 118 : 140); ctx.scale(sc, sc);
-    ctx.font = '26px "Luckiest Guy", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    var tw = Math.min(W - 40, ctx.measureText(b.text).width + 44);
-    rr(-tw / 2, -22, tw, 44, 22);
+    ctx.translate(W / 2, mode === 'bonus' ? 108 : 40); ctx.scale(sc, sc);
+    ctx.font = '20px "Luckiest Guy", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    var tw = Math.min(W - 200, ctx.measureText(b.text).width + 36);
+    rr(-tw / 2, -17, tw, 34, 17);
     ctx.fillStyle = 'rgba(11,42,91,0.78)'; ctx.fill();
     ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.stroke();
     ctx.fillStyle = b.col; ctx.fillText(b.text, 0, 3, tw - 24);
@@ -4505,31 +4508,45 @@ var OBSART = (function () {
       ctx.textAlign = 'center';
       return;
     }
-    // run: portal progress
-    var need = nextPortal - pickupsRun;
-    var label = portal || portalIn > 0 ? 'Run into the portal!' : 'Bonus portal ' + Math.max(0, Math.min(portalGap, portalGap - need)) + '/' + portalGap;
-    ctx.font = '17px "Luckiest Guy", sans-serif';
-    var tw = ctx.measureText(label).width + 50;
-    hudPill(W / 2, 86, tw, 32);
-    ctx.save(); ctx.translate(W / 2 - tw / 2 + 18, 86); ctx.rotate(t * 3);
-    ctx.strokeStyle = '#C9A2FF'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 8, 0, 4.4); ctx.stroke();
+    // run: two small round meters tucked in the top-left corner (below the Dino power bar when it shows)
+    var need = Math.max(0, nextPortal - pickupsRun);
+    var open = !!(portal || portalIn > 0);
+    var prog = open ? 1 : Math.max(0, Math.min(1, 1 - need / portalGap));
+    var my = power > 0 ? 92 : 36, mx = 36;
+    miniMeter(mx, my, prog, open || prog >= 0.75 ? '#E3C8FF' : '#B48CFF', open || prog >= 0.75);
+    // portal swirl icon, with how many more to go
+    ctx.save(); ctx.translate(mx, my); ctx.rotate(t * (open ? 6 : 2));
+    ctx.strokeStyle = open ? '#FFE066' : '#D9C2FF'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(0, 0, 9, 0, 4.2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, 4.5, 2, 5.6); ctx.stroke();
     ctx.restore();
-    ctx.fillStyle = portal ? '#FFE066' : '#FFFFFF'; ctx.fillText(label, W / 2 + 10, 88);
-    var prog = portal || portalIn > 0 ? 1 : Math.max(0, Math.min(1, 1 - need / portalGap));
-    var bw = Math.max(120, tw - 30), bx = W / 2 - bw / 2;
-    ctx.fillStyle = 'rgba(11,42,91,0.7)'; rr(bx - 2, 105, bw + 4, 10, 5); ctx.fill();
-    if (prog > 0) {
-      var pg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
-      pg.addColorStop(0, '#9B6BFF'); pg.addColorStop(1, '#E3C8FF');
-      ctx.fillStyle = pg; rr(bx, 107, Math.max(6, bw * prog), 6, 3); ctx.fill();
-      if (prog >= 0.8) { var pp2 = 0.5 + 0.5 * Math.sin(t * 8); glow(bx + bw * prog, 110, 16 + pp2 * 6, 'rgba(227,200,255,0.8)'); }
+    if (!open && need > 0) {
+      ctx.font = '13px "Luckiest Guy", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      rr(mx + 10, my + 8, 22, 16, 8); ctx.fillStyle = '#FFE066'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#0B2A5B'; ctx.stroke();
+      ctx.fillStyle = '#0B2A5B'; ctx.fillText(String(need), mx + 21, my + 17);
     }
     if (riding()) {
-      var ready = rexCool <= 0;
-      hudPill(70, 86, 116, 32);
-      ctx.font = '15px "Luckiest Guy", sans-serif';
+      var sx2 = mx + 52, ready = rexCool <= 0;
+      miniMeter(sx2, my, ready ? 1 : 1 - rexCool / REX_COOL, ready ? '#8FF29A' : '#9AA8BE', ready);
+      // a big Rex footprint
+      ctx.save(); ctx.translate(sx2, my + 1);
       ctx.fillStyle = ready ? '#8FF29A' : '#C7D2E6';
-      ctx.fillText(ready ? 'Stomp ready' : 'Stomp ' + Math.ceil(rexCool) + 's', 70, 88);
+      ctx.beginPath(); ctx.ellipse(0, 4, 5.5, 4.5, 0, 0, 6.3); ctx.fill();
+      [[-6, -4, -0.5], [0, -7, 0], [6, -4, 0.5]].forEach(function (tq) {
+        ctx.save(); ctx.translate(tq[0], tq[1]); ctx.rotate(tq[2]);
+        ctx.beginPath(); ctx.moveTo(-2.4, 2); ctx.lineTo(0, -4.5); ctx.lineTo(2.4, 2); ctx.closePath(); ctx.fill(); ctx.restore();
+      });
+      ctx.restore();
+    }
+  }
+  function miniMeter(x, y, prog, col, hot) {
+    if (hot) glow(x, y, 30 + Math.sin(t * 8) * 3, 'rgba(255,255,255,0.35)');
+    ctx.beginPath(); ctx.arc(x, y, 19, 0, 6.3);
+    ctx.fillStyle = 'rgba(11,42,91,0.72)'; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.stroke();
+    if (prog > 0) {
+      ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(x, y, 15, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog); ctx.stroke();
     }
   }
   function drawWarp() {
