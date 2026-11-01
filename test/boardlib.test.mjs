@@ -66,3 +66,32 @@ console.log('action tests passed');
   assert.equal(r.error, null, 'existing players still save when full');
   console.log('name tests passed');
 }
+
+// ---- power-ups are used up ----
+{
+  const { applyOp, emptyBoard, publicBoard, PRICES, MAX_CHARGES } = await import('../lib/boardlib.mjs');
+  let b = emptyBoard();
+  // Chris's old forever-Rex becomes 3 rides
+  assert.deepEqual(publicBoard(b).players.chris.charges, { rex: 3 });
+  assert.ok(!publicBoard(b).players.chris.owned.includes('rex'));
+  let r = applyOp(b, { type: 'buy', id: 'chris', item: 'rex', opId: 'c1aaaa' });
+  assert.equal(r.error, null); b = r.board;
+  assert.equal(b.players.chris.charges.rex, 4, 'buying adds one');
+  assert.equal(b.players.chris.bolts, 356 - PRICES.rex);
+  r = applyOp(b, { type: 'buy', id: 'chris', item: 'magnet', opId: 'c2aaaa' }); b = r.board;
+  r = applyOp(b, { type: 'buy', id: 'chris', item: 'magnet', opId: 'c3aaaa' }); b = r.board;
+  assert.equal(b.players.chris.charges.magnet, 2, 'power-ups stack');
+  r = applyOp(b, { type: 'use', id: 'chris', item: 'magnet', opId: 'c4aaaa' }); b = r.board;
+  assert.equal(b.players.chris.charges.magnet, 1, 'using takes one away');
+  r = applyOp(b, { type: 'use', id: 'chris', item: 'magnet', opId: 'c4aaaa' });
+  assert.equal(r.board.players.chris.charges.magnet, 1, 'a retried use is not counted twice');
+  r = applyOp(b, { type: 'use', id: 'addy', item: 'rex', opId: 'c5aaaa' });
+  assert.equal(r.error, 'none_left', 'cannot use what you do not have');
+  r = applyOp(b, { type: 'buy', id: 'chris', item: 'dino', opId: 'c6aaaa' }); b = r.board;
+  r = applyOp(b, { type: 'buy', id: 'chris', item: 'dino', opId: 'c7aaaa' });
+  assert.equal(r.error, 'already_owned', 'outfits are still bought once');
+  let full = emptyBoard(); full.players.addy.bolts = 9999; full.players.addy.charges = { power: MAX_CHARGES };
+  r = applyOp(full, { type: 'buy', id: 'addy', item: 'power', opId: 'c8aaaa' });
+  assert.equal(r.error, 'backpack_full');
+  console.log('charge tests passed');
+}

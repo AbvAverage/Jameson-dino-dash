@@ -2115,7 +2115,7 @@ var SHOP = { items: [
     { id: 'dino', kind: 'outfit', name: 'Dino PJs', desc: 'Green, with spikes and a tail', price: 40 },
     { id: 'fire', kind: 'outfit', name: 'Fire Chief', desc: 'Red with shiny stripes', price: 60 },
     { id: 'space', kind: 'outfit', name: 'Space Ranger', desc: 'Stars and a little planet', price: 80 },
-    { id: 'power', kind: 'upgrade', name: 'Super Power', desc: 'Dino power lasts 14 seconds, not 9', price: 120 },
-    { id: 'magnet', kind: 'upgrade', name: 'Dino Magnet', desc: 'Pulls nearby dinos and trucks to you', price: 150 },
-    { id: 'rex', kind: 'ride', name: 'Rex the T-Rex', desc: 'Ride Rex! He stomps a block every 8 seconds', price: 300 }
+    { id: 'power', kind: 'upgrade', use: true, name: 'Super Power', desc: '14 seconds of Dino Power, whenever you want', price: 25 },
+    { id: 'magnet', kind: 'upgrade', use: true, name: 'Dino Magnet', desc: 'Pulls dinos and trucks to you for 30 seconds', price: 25 },
+    { id: 'rex', kind: 'ride', use: true, name: 'Rex the T-Rex', desc: 'Ride Rex for 30 seconds. He stomps a block every 6 seconds', price: 60 }
   ], rules: { POWER_TIME: 9, PORTAL_EVERY: 20, REX_COOL: 8, BONUS_TIME: 30 }, zoneNames: { jungle: 'JUNGLE RUN', volcano: 'VOLCANO VALLEY', beach: 'SUNNY BEACH' } };

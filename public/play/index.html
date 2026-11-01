@@ -220,6 +220,8 @@ button.shopbtn:focus-visible { outline: 3px solid var(--orange); outline-offset:
   padding: 8px; text-align: center; min-width: 0;
 }
 .item.on { background: #FFF3C2; }
+.item p.have { font-weight: 700; color: var(--navy); min-height: 0; font-size: 13.5px !important; }
+.item[data-have="0"] p.have { color: #7A8AA6; font-weight: 600; }
 .item canvas { width: 100%; height: 112px; border-radius: 10px; display: block; }
 .item h4 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 18px; letter-spacing: 0.5px; color: var(--navy); }
 .item p { font-size: 13px !important; line-height: 1.3 !important; color: #4A5C7A; min-height: 2.6em; }
@@ -233,6 +235,20 @@ button.shopbtn:focus-visible { outline: 3px solid var(--orange); outline-offset:
 .item button.equip { background: #8FE2FF; }
 .item button:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
 @media (max-width: 640px) { .items { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; } .item { padding: 6px; } .item canvas { height: 80px; } .item p { display: none; } .item h4 { font-size: 15px; } }
+.deploy { position: absolute; left: 14px; bottom: 10px; display: flex; gap: 10px; z-index: 2; }
+.dbtn {
+  --p: 0; position: relative; width: clamp(54px, 11vmin, 68px); height: clamp(54px, 11vmin, 68px); border-radius: 50%; padding: 0;
+  border: 4px solid var(--navy); background: radial-gradient(circle at 38% 32%, #FFFFFF 0%, #FFF3C2 55%, #FFD23F 100%);
+  box-shadow: 0 5px 0 var(--navy); cursor: pointer; display: grid; place-items: center; touch-action: manipulation;
+}
+.dbtn svg { width: 66%; height: 66%; }
+.dbtn .dcount { position: absolute; right: -6px; top: -6px; min-width: 24px; height: 24px; box-sizing: border-box; padding: 0 5px; border-radius: 12px; background: var(--navy); color: #fff; font-family: var(--body); font-size: 14px; font-weight: 700; display: grid; place-items: center; border: 2px solid #fff; }
+.dbtn:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--navy); }
+.dbtn:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+.dbtn.active { background: conic-gradient(rgba(11,42,91,0.6) calc(var(--p) * 1turn), rgba(255,255,255,0) 0), radial-gradient(circle at 38% 32%, #FFFFFF 0%, #B6F0A4 55%, #3BB54A 100%); box-shadow: 0 5px 0 var(--navy), 0 0 18px rgba(120,255,140,0.9); }
+.dbtn.active .dcount { background: #3BB54A; }
+.dbtn[disabled]:not(.active) { opacity: .5; }
+@media (prefers-reduced-motion: reduce) { .dbtn:active { transform: none; } }
 .bonusctl { position: absolute; left: 14px; bottom: 10px; display: flex; gap: 12px; z-index: 2; }
 button.move {
   width: clamp(58px, 12vmin, 74px); height: clamp(58px, 12vmin, 74px); border-radius: 50%;
@@ -506,6 +522,12 @@ button.go, button.shopbtn { transition: transform .12s ease-out, box-shadow .12s
     </button>
   </div>
 
+
+  <div class="deploy" id="deployBar" hidden>
+    <button class="dbtn" type="button" data-item="rex" aria-label="Ride Rex"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 26c0-9 7-15 16-15 4 0 7 1 9 4l-3 2 4 3-6 1c-1 4-4 7-9 8l1 4h-4l-1-4h-3l-1 4H7l1-5c-1-1-1-1 0-2z" fill="#5ACB5E" stroke="#0B2A5B" stroke-width="2.4" stroke-linejoin="round"/><circle cx="26" cy="16" r="2" fill="#0B2A5B"/><path d="M27 21l2 2 2-2 2 2" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg><b class="dcount">0</b></button>
+    <button class="dbtn" type="button" data-item="magnet" aria-label="Use the Dino Magnet"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M10 9v12a10 10 0 0020 0V9h-7v12a3 3 0 01-6 0V9z" fill="#E8483A" stroke="#0B2A5B" stroke-width="2.4" stroke-linejoin="round"/><path d="M10 9h7v5h-7zM23 9h7v5h-7z" fill="#E8ECF2" stroke="#0B2A5B" stroke-width="2.4" stroke-linejoin="round"/></svg><b class="dcount">0</b></button>
+    <button class="dbtn" type="button" data-item="power" aria-label="Use Super Power"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="14" fill="#8FE2FF" stroke="#0B2A5B" stroke-width="2.4"/><path d="M22 9l-9 13h6l-2 9 10-14h-6z" fill="#FFE066" stroke="#0B2A5B" stroke-width="2" stroke-linejoin="round"/></svg><b class="dcount">0</b></button>
+  </div>
   <button class="blast" id="blastBtn" type="button" aria-label="Blast" hidden>
     <svg viewBox="0 0 24 24" fill="none" stroke="#0B2A5B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg>
     Blast
@@ -548,7 +570,7 @@ button.go, button.shopbtn { transition: transform .12s ease-out, box-shadow .12s
       </div>
       <p class="shopwho" id="shopWho">Shopping for Chris</p>
       <div class="items" id="shopItems"></div>
-      <p class="shopnote">Earn bolts in the bonus world (grab 20 dinos or trucks in one run to open the portal), from daily missions, and a few at the end of every run.</p>
+      <p class="shopnote"><b>Outfits are yours to keep. Power-ups get used up:</b> buy one, then tap its button at the bottom of the screen during a run. Earn bolts in the bonus world (grab 20 dinos or trucks in one run to open the portal), from daily missions, and a few at the end of every run.</p>
       <button class="go" id="shopBack" type="button">Back</button>
     </div>
   </div>
@@ -2715,7 +2737,9 @@ var OBSART = (function () {
   var H = 500, W = 800, scale = 1, dpr = 1;
   var GROUND = 384;
   var POWER_TIME = 9, powerMax = 9;
-  var PORTAL_EVERY = 20, REX_COOL = 8, BONUS_TIME = 30;
+  var PORTAL_EVERY = 20, REX_COOL = 6, BONUS_TIME = 30;
+  var USE_ITEMS = ['rex', 'magnet', 'power'], MAX_CHARGES = 20, REX_TIME = 30, MAGNET_TIME = 30, SUPER_TIME = 14;
+  var rexT = 0, magnetT = 0;
 
   function resize() {
     var r = stage.getBoundingClientRect();
@@ -2912,9 +2936,9 @@ var OBSART = (function () {
     { id: 'dino', kind: 'outfit', name: 'Dino PJs', desc: 'Green, with spikes and a tail', price: 40 },
     { id: 'fire', kind: 'outfit', name: 'Fire Chief', desc: 'Red with shiny stripes', price: 60 },
     { id: 'space', kind: 'outfit', name: 'Space Ranger', desc: 'Stars and a little planet', price: 80 },
-    { id: 'power', kind: 'upgrade', name: 'Super Power', desc: 'Dino power lasts 14 seconds, not 9', price: 120 },
-    { id: 'magnet', kind: 'upgrade', name: 'Dino Magnet', desc: 'Pulls nearby dinos and trucks to you', price: 150 },
-    { id: 'rex', kind: 'ride', name: 'Rex the T-Rex', desc: 'Ride Rex! He stomps a block every 8 seconds', price: 300 }
+    { id: 'power', kind: 'upgrade', use: true, name: 'Super Power', desc: '14 seconds of Dino Power, whenever you want', price: 25 },
+    { id: 'magnet', kind: 'upgrade', use: true, name: 'Dino Magnet', desc: 'Pulls dinos and trucks to you for 30 seconds', price: 25 },
+    { id: 'rex', kind: 'ride', use: true, name: 'Rex the T-Rex', desc: 'Ride Rex for 30 seconds. He stomps a block every 6 seconds', price: 60 }
   ];
   var wallets = {};
   var dirty = {};
@@ -2925,10 +2949,17 @@ var OBSART = (function () {
     if (!w || typeof w !== 'object') w = wallets[id] = { bolts: 0, owned: [], outfit: 'truck', ride: false };
     if (!Array.isArray(w.owned)) w.owned = [];
     if (typeof w.bolts !== 'number') w.bolts = 0;
+    if (!w.charges || typeof w.charges !== 'object') w.charges = {};
+    // older saves owned power-ups forever; they become 3 uses each (same as the score server)
+    if (w.owned.some(function (it) { return USE_ITEMS.indexOf(it) >= 0; })) {
+      w.owned = w.owned.filter(function (it) { if (USE_ITEMS.indexOf(it) >= 0) { w.charges[it] = Math.min(MAX_CHARGES, (w.charges[it] || 0) + 3); return false; } return true; });
+    }
+    delete w.ride;
     return w;
   }
+  function chargesOf(item) { return current ? (wal(current).charges[item] || 0) : 0; }
   function has(id, item) { return item === 'truck' || wal(id).owned.indexOf(item) >= 0; }
-  function riding() { return !!(wal(current).ride && has(current, 'rex')); }
+  function riding() { return rexT > 0; }
   function saveWallets() { try { localStorage.setItem('jameson-wallets', JSON.stringify(wallets)); } catch (e) {} }
   function renderBolts() {
     if (!wallets) return;
@@ -2941,7 +2972,7 @@ var OBSART = (function () {
     if (useOps || !dbRef || !canSave) return;
     var w = wal(id);
     var patch = { players: {} };
-    patch.players[id] = { name: nameOf(id), bolts: w.bolts, owned: w.owned.slice(), outfit: w.outfit || 'truck', ride: !!w.ride };
+    patch.players[id] = { name: nameOf(id), bolts: w.bolts, owned: w.owned.slice(), outfit: w.outfit || 'truck', charges: Object.assign({}, w.charges) };
     writing = writing.then(function () { return dbRef.update(patch); }).then(function () { dirty[id] = false; }).catch(function (err) {
       if (err && (err.code === 'invalid_argument' || err.code === 'not_granted' || err.code === 'revoked')) { canSave = false; renderBoard(); }
     });
@@ -2952,7 +2983,7 @@ var OBSART = (function () {
       var p = { id: pid };
       var r = players[p.id];
       if (dirty[p.id] || (p.id === current && mode === 'bonus') || (useOps && pendingFor(p.id))) return;
-      if (r && typeof r.bolts === 'number') wallets[p.id] = { bolts: r.bolts, owned: Array.isArray(r.owned) ? r.owned.slice() : [], outfit: r.outfit || 'truck', ride: !!r.ride };
+      if (r && typeof r.bolts === 'number') wallets[p.id] = { bolts: r.bolts, owned: Array.isArray(r.owned) ? r.owned.slice() : [], outfit: r.outfit || 'truck', charges: r.charges && typeof r.charges === 'object' ? Object.assign({}, r.charges) : {} };
     });
     saveWallets();
   }
@@ -3011,13 +3042,34 @@ var OBSART = (function () {
     var list = document.getElementById('shopItems');
     list.replaceChildren();
     ITEMS.forEach(function (it) {
-      var owned = has(current, it.id);
-      var on = (it.kind === 'outfit' && (w.outfit || 'truck') === it.id) || (it.kind === 'ride' && owned && w.ride) || (it.kind === 'upgrade' && owned);
+      var owned = it.use ? false : has(current, it.id);
+      var have = it.use ? (w.charges[it.id] || 0) : 0;
+      var on = (it.kind === 'outfit' && (w.outfit || 'truck') === it.id) || (it.use && have > 0);
       var card = document.createElement('div'); card.className = 'item' + (on ? ' on' : '');
       var cv = document.createElement('canvas'); cv.setAttribute('aria-hidden', 'true');
       var h4 = document.createElement('h4'); h4.textContent = it.name;
       var p = document.createElement('p'); p.textContent = it.desc;
       var btn = document.createElement('button'); btn.type = 'button'; btn.id = 'buy-' + it.id;
+      if (it.use) {
+        var hv = document.createElement('p'); hv.className = 'have'; hv.textContent = have ? 'You have ' + have : 'You have none yet';
+        card.dataset.have = have;
+        btn.innerHTML = 'Buy 1 ' + boltIcon() + '<span></span>';
+        btn.lastChild.textContent = String(it.price);
+        btn.setAttribute('aria-label', 'Buy one ' + it.name + ' for ' + it.price + ' bolts. You have ' + have + '.');
+        if (w.bolts < it.price) { btn.disabled = true; btn.setAttribute('aria-label', it.name + ' costs ' + it.price + ' bolts. You need ' + (it.price - w.bolts) + ' more. You have ' + have + '.'); }
+        if (have >= MAX_CHARGES) { btn.disabled = true; btn.textContent = 'Backpack full'; }
+        btn.addEventListener('click', function () {
+          var ww = wal(current);
+          if (ww.bolts < it.price || (ww.charges[it.id] || 0) >= MAX_CHARGES) return;
+          ww.bolts -= it.price; ww.charges[it.id] = (ww.charges[it.id] || 0) + 1;
+          changed(current); pushWallet(current); if (useOps) enqueue({ type: 'buy', id: current, item: it.id }); SFX.play('buy'); renderShop();
+          var nb = document.getElementById('buy-' + it.id); if (nb) nb.focus();
+        });
+        card.appendChild(cv); card.appendChild(h4); card.appendChild(p); card.appendChild(hv); card.appendChild(btn);
+        list.appendChild(card);
+        previewItem(cv, it);
+        return;
+      }
       if (!owned) {
         btn.innerHTML = 'Buy ' + boltIcon() + '<span></span>';
         btn.lastChild.textContent = String(it.price);
@@ -3027,7 +3079,6 @@ var OBSART = (function () {
           if (wal(current).bolts < it.price) return;
           w.bolts -= it.price; w.owned.push(it.id);
           if (it.kind === 'outfit') w.outfit = it.id;
-          if (it.kind === 'ride') w.ride = true;
           changed(current); pushWallet(current); if (useOps) enqueue({ type: 'buy', id: current, item: it.id }); SFX.play('buy'); renderShop();
           var nb = document.getElementById('buy-' + it.id); if (nb) nb.focus();
         });
@@ -3035,10 +3086,6 @@ var OBSART = (function () {
         btn.textContent = on ? 'Wearing' : 'Wear';
         btn.disabled = on; if (!on) btn.className = 'equip';
         btn.addEventListener('click', function () { w.outfit = it.id; changed(current); pushWallet(current); if (useOps) enqueue({ type: 'equip', id: current, outfit: it.id }); SFX.play('click'); renderShop(); });
-      } else if (it.kind === 'ride') {
-        btn.textContent = w.ride ? 'Walk instead' : 'Ride Rex';
-        btn.className = 'equip';
-        btn.addEventListener('click', function () { w.ride = !w.ride; changed(current); pushWallet(current); if (useOps) enqueue({ type: 'equip', id: current, ride: w.ride }); SFX.play('click'); renderShop(); var nb = document.getElementById('buy-rex'); if (nb) nb.focus(); });
       } else {
         btn.textContent = 'Owned'; btn.disabled = true;
       }
@@ -3091,7 +3138,7 @@ var OBSART = (function () {
     keys.left = false; keys.right = false;
     rings = []; speedLines = []; confetti = []; crash = null; impact = null; flash = 0; freeze = 0; shakeMag = 1;
     goT = 99; streak = 0; lastClose = -9; todName = 'day';
-    rushT = 0; run = { closes: 0, maxStreak: 0, bonusVisits: 0, shieldSaves: 0 }; nextMilestone = 1000; lastTickSec = 0;
+    rushT = 0; run = { closes: 0, maxStreak: 0, bonusVisits: 0, shieldSaves: 0 }; rexT = 0; magnetT = 0; nextMilestone = 1000; lastTickSec = 0;
     setPower(0);
     setBonusUI(false);
   }
@@ -3391,6 +3438,9 @@ var OBSART = (function () {
     if (state !== 'play') return;
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') { keys.left = true; e.preventDefault(); return; }
     if (e.code === 'ArrowRight' || e.code === 'KeyD') { keys.right = true; e.preventDefault(); return; }
+    if (e.code === 'Digit1') { usePowerup('rex'); return; }
+    if (e.code === 'Digit2') { usePowerup('magnet'); return; }
+    if (e.code === 'Digit3') { usePowerup('power'); return; }
     if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); jump(); }
     else if (e.code === 'KeyF' || e.code === 'KeyX' || e.code === 'Enter') { e.preventDefault(); blast(); }
   });
@@ -3631,6 +3681,15 @@ var OBSART = (function () {
       if (rushT === 0) popups.push({ x: P.x + 40, y: P.y - 170, text: 'Rush over!', life: 0.8, col: '#FFFFFF' });
     }
     rexCool = Math.max(0, rexCool - dt);
+    if (rexT > 0) {
+      var rxPrev = rexT; rexT = Math.max(0, rexT - dt);
+      if (rxPrev > 3 && rexT <= 3) popups.push({ x: P.x + 60, y: P.y - 230, text: 'Rex: 3 more seconds!', life: 1.2, col: '#9BE27F' });
+      if (rexT === 0) { popups.push({ x: P.x + 60, y: P.y - 180, text: 'Bye, Rex!', life: 1.1, col: '#9BE27F' }); puff(P.x, GROUND, 14, 90); grace = Math.max(grace, 0.8); SFX.play('land'); }
+    }
+    if (magnetT > 0) {
+      magnetT = Math.max(0, magnetT - dt);
+      if (magnetT === 0) popups.push({ x: P.x + 60, y: P.y - 180, text: 'Magnet off', life: 0.9, col: '#FF8A7A' });
+    }
 
     // zones: every ZONE_LEN of distance the world changes and the pace steps up
     var zi = Math.floor(dist / ZONE_LEN);
@@ -3785,7 +3844,7 @@ var OBSART = (function () {
     for (var k = goodies.length - 1; k >= 0; k--) {
       var g = goodies[k];
       g.x -= vel * dt;
-      if ((g.kind === 'dino' || g.kind === 'truck') && has(current, 'magnet')) {
+      if ((g.kind === 'dino' || g.kind === 'truck') && magnetT > 0) {
         var mdx = P.x - g.x, mdy = (P.y - 85) - g.y;
         if (mdx > -240 && mdx < 60 && Math.abs(mdy) < 220) { var pull = Math.min(1, dt * 6); g.x += mdx * pull; g.y += mdy * pull; }
       }
@@ -3806,7 +3865,7 @@ var OBSART = (function () {
           goodies.splice(k, 1); continue;
         }
         if (g.kind === 'power') {
-          powerMax = has(current, 'power') ? 14 : POWER_TIME;
+          powerMax = POWER_TIME;
           setPower(powerMax);
           SFX.play('power');
           popups.push({ x: g.x, y: gy, text: 'DINO POWER!', life: 1.1, big: true });
@@ -3857,6 +3916,60 @@ var OBSART = (function () {
   }
 
   // ---------- bonus world ----------
+  // ---------- power-ups from the backpack ----------
+  var deployBar = document.getElementById('deployBar');
+  var dbtns = {};
+  Array.prototype.forEach.call(deployBar.querySelectorAll('.dbtn'), function (b) {
+    dbtns[b.dataset.item] = b;
+    b.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); usePowerup(b.dataset.item); });
+    b.addEventListener('click', function (e) { if (e.detail === 0) usePowerup(b.dataset.item); });
+  });
+  function activeLeft(item) { return item === 'rex' ? rexT : item === 'magnet' ? magnetT : (power > 0 && powerMax === SUPER_TIME ? power : 0); }
+  function usePowerup(item) {
+    if (state !== 'play' || mode !== 'run' || warp || !current) return;
+    if (chargesOf(item) <= 0 || activeLeft(item) > 0) return;
+    var w = wal(current); w.charges[item] -= 1; changed(current);
+    if (useOps) enqueue({ type: 'use', id: current, item: item }); else pushWallet(current);
+    var hy = P.y - 120;
+    if (item === 'rex') {
+      rexT = REX_TIME; rexCool = 0; P.roarT = 0.9; grace = Math.max(grace, 0.4);
+      popups.push({ x: P.x + 60, y: hy - 70, text: 'REX TIME!', life: 1.2, big: true, col: '#9BE27F' });
+      ring(P.x + 20, P.y - 60, '#9BE27F', 150); puff(P.x, GROUND, 12, 70); kick(0.3, 1.2); SFX.play('rumble'); buzz([30, 30, 60]);
+    } else if (item === 'magnet') {
+      magnetT = MAGNET_TIME;
+      popups.push({ x: P.x + 60, y: hy - 40, text: 'MAGNET!', life: 1.1, big: true, col: '#FF8A7A' });
+      ring(P.x, P.y - 80, '#FF8A7A', 130); SFX.play('shield'); buzz(20);
+    } else {
+      powerMax = SUPER_TIME; setPower(SUPER_TIME);
+      popups.push({ x: P.x + 60, y: hy - 40, text: 'SUPER POWER!', life: 1.1, big: true });
+      ring(P.x, P.y - 80, '#8FE2FF', 140); SFX.play('power'); buzz([20, 40, 20]);
+    }
+    renderDeploy(true);
+  }
+  var deploySig = '';
+  function renderDeploy(force) {
+    var show = state === 'play' && mode === 'run' && !!current;
+    var any = false, sig = show ? '1' : '0';
+    USE_ITEMS.forEach(function (it) { var n = chargesOf(it), a = activeLeft(it) > 0; if (n > 0 || a) any = true; sig += '|' + n + (a ? 'a' : ''); });
+    show = show && any;
+    if (force || sig !== deploySig) {
+      deploySig = sig;
+      deployBar.hidden = !show;
+      USE_ITEMS.forEach(function (it) {
+        var b = dbtns[it], n = chargesOf(it), a = activeLeft(it) > 0;
+        b.hidden = !(n > 0 || a);
+        b.classList.toggle('active', a);
+        b.disabled = !a && n <= 0;
+        b.querySelector('.dcount').textContent = String(n);
+        var nm = it === 'rex' ? 'Ride Rex' : it === 'magnet' ? 'Use the Dino Magnet' : 'Use Super Power';
+        b.setAttribute('aria-label', a ? nm + ': on now' : nm + ' (' + n + ' left)');
+      });
+    }
+    if (show) {
+      var tot = { rex: REX_TIME, magnet: MAGNET_TIME, power: SUPER_TIME };
+      USE_ITEMS.forEach(function (it) { var a = activeLeft(it); if (a > 0) dbtns[it].style.setProperty('--p', (1 - a / tot[it]).toFixed(3)); });
+    }
+  }
   function setBonusUI(on) {
     bonusCtl.hidden = !on; jumpBtn.hidden = !on;
     if (on) blastBtn.hidden = true;
@@ -4370,6 +4483,16 @@ var OBSART = (function () {
       for (var rc = 0; rc < 6; rc++) { ctx.strokeStyle = ['#FF5E5E', '#FFB13B', '#FFE94A', '#5EE07A', '#4FC8FF', '#B07BFF'][rc]; ctx.beginPath(); ctx.arc(0, 0, 92 + rup * 0.5, rc * Math.PI / 3 + 0.1, (rc + 1) * Math.PI / 3 - 0.1); ctx.stroke(); }
       ctx.restore();
     }
+    if (magnetT > 0 && state === 'play' && mode === 'run') {
+      ctx.save(); ctx.lineCap = 'round';
+      for (var mg = 0; mg < 3; mg++) {
+        var mph = (t * 1.6 + mg / 3) % 1, mr = 30 + mph * 150;
+        ctx.globalAlpha = (1 - mph) * (magnetT < 3 && Math.floor(t * 10) % 2 === 0 ? 0.2 : 0.55);
+        ctx.strokeStyle = '#FF8A7A'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(P.x + 10, P.y - 85, mr, -0.7, 0.7); ctx.stroke();
+      }
+      ctx.restore();
+    }
     if (blink) ctx.globalAlpha = 0.45;
     var moving = mode === 'bonus' ? (keys.left !== keys.right) : true;
     JAM.draw(ctx, head, P.x, baseY, {
@@ -4567,6 +4690,7 @@ var OBSART = (function () {
   function frame(now) {
     var dt = Math.min(0.033, (now - last) / 1000);
     last = now;
+    renderDeploy(false);
     var playingNow = state === 'play' || state === 'paused';
     if (document.body.classList.contains('playing') !== playingNow) document.body.classList.toggle('playing', playingNow);
     if (freeze > 0) freeze -= dt;
@@ -4578,7 +4702,7 @@ var OBSART = (function () {
   requestAnimationFrame(frame);
 
   // test hook for screenshots only
-  window.__jd = { start: start, jump: jump, blast: blast, power: function () { setPower(POWER_TIME); }, pause: pauseGame, goodie: spawnGoodie, warp: startWarp, setKey: function (k, v) { keys[k] = v; }, addBolts: function (n) { wal(current).bolts += n; changed(current); if (useOps) enqueue({ type: 'earn', id: current, n: n }); }, queue: function () { return queue; }, B: function () { return B; }, mode: function () { return mode; }, shop: openShop, grabs: function (n) { pickupsRun += n; if (pickupsRun >= nextPortal && !portal) portalIn = 0.1; }, step: function (dt) { update(dt); }, st: function () { return { state: state, vel: vel, speed: speed, dist: dist, mode: mode, zi: zoneIdx, grace: grace }; }, setGrace: function (g) { grace = g; }, spawn: spawnObstacle, pattern: function (n) { spawnPattern(n); }, setDist: function (d) { dist = d; }, zone: function () { return zoneKey; }, obs: function () { return obstacles; }, P: function () { return P; }, shieldOn: function () { P.shield = true; }, rush: function () { rushT = RUSH_TIME; }, runStats: function () { return run; } };
+  window.__jd = { start: start, jump: jump, blast: blast, power: function () { setPower(POWER_TIME); }, pause: pauseGame, goodie: spawnGoodie, warp: startWarp, setKey: function (k, v) { keys[k] = v; }, addBolts: function (n) { wal(current).bolts += n; changed(current); if (useOps) enqueue({ type: 'earn', id: current, n: n }); }, queue: function () { return queue; }, B: function () { return B; }, mode: function () { return mode; }, shop: openShop, grabs: function (n) { pickupsRun += n; if (pickupsRun >= nextPortal && !portal) portalIn = 0.1; }, step: function (dt) { update(dt); }, st: function () { return { state: state, vel: vel, speed: speed, dist: dist, mode: mode, zi: zoneIdx, grace: grace }; }, setGrace: function (g) { grace = g; }, spawn: spawnObstacle, pattern: function (n) { spawnPattern(n); }, setDist: function (d) { dist = d; }, zone: function () { return zoneKey; }, obs: function () { return obstacles; }, P: function () { return P; }, use: function (it) { usePowerup(it); }, timers: function () { return { rex: rexT, magnet: magnetT, power: power }; }, shieldOn: function () { P.shield = true; }, rush: function () { rushT = RUSH_TIME; }, runStats: function () { return run; } };
 })();
 </script>
 

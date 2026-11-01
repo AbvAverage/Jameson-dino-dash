@@ -610,7 +610,7 @@
   function initShop() {
     var grid = document.getElementById('shopGrid');
     var BOLT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="#FFD23F" stroke="#7A3E00" stroke-width="1.6" stroke-linejoin="round"></path></svg>';
-    var KIND = { outfit: 'Outfit', upgrade: 'Upgrade', ride: 'Ride' };
+    var KIND = { outfit: 'Outfit · yours to keep', upgrade: 'Power-up · used up', ride: 'Ride · used up' };
     var order = SHOP.items.filter(function (i) { return i.kind === 'ride'; }).concat(SHOP.items.filter(function (i) { return i.kind !== 'ride'; }));
     var io = new IntersectionObserver(function (es) {
       es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
@@ -627,7 +627,7 @@
       var p = document.createElement('p'); p.textContent = it.desc + '.';
       var price = document.createElement('span');
       if (it.price === 0) { price.className = 'price free'; price.textContent = 'Free'; }
-      else { price.className = 'price'; price.innerHTML = BOLT + '<span></span>'; price.lastChild.textContent = it.price + ' bolts'; }
+      else { price.className = 'price'; price.innerHTML = BOLT + '<span></span>'; price.lastChild.textContent = it.price + (it.use ? ' bolts each' : ' bolts'); }
       body.appendChild(kind); body.appendChild(h); body.appendChild(p); body.appendChild(price);
       card.appendChild(cv); card.appendChild(body);
       grid.appendChild(card);
