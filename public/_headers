@@ -10,3 +10,7 @@
 # Landing page code and art: cache, but check back for changes.
 /assets/*
   Cache-Control: public, max-age=3600, must-revalidate
+/sw.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache

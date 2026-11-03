@@ -37,15 +37,15 @@ with sync_playwright() as p:
     check('Aurora\'s offline run saved after reconnecting', au['games'] == 1 and au['best'] > 0, au)
     check('tablet queue emptied', t.evaluate('__jd.queue().length') == 0)
     # 3. bolts and a purchase as Addy on the phone, seen on the tablet
-    ph.fill('#nameInput', 'Addy'); ph.evaluate('__jd.addBolts(100)'); ph.wait_for_timeout(1200)
+    ph.fill('#nameInput', 'Addy'); ph.evaluate('__jd.addBolts(200)'); ph.wait_for_timeout(1200)
     ph.click('#shopBtnStart'); ph.wait_for_timeout(300); ph.click('#buy-dino'); ph.wait_for_timeout(1500)
     a = board()['players']['addy']
-    check('purchase checked by the server (100 - 40 = 60)', a.get('bolts') == 60 and a.get('owned') == ['dino'], a)
+    check('purchase checked by the server (200 - 80 = 120)', a.get('bolts') == 120 and a.get('owned') == ['dino'], a)
     t.reload(); t.wait_for_timeout(1500); t.fill('#nameInput', 'Addy'); t.wait_for_timeout(300)
-    check('tablet shows Addy\'s 60 bolts', t.inner_text('#boltsPill') == '60', t.inner_text('#boltsPill'))
+    check('tablet shows Addy\'s 120 bolts', t.inner_text('#boltsPill') == '120', t.inner_text('#boltsPill'))
     # 4. two devices earn bolts for the same player at the same moment
     t.evaluate('__jd.addBolts(50)'); ph.evaluate('__jd.addBolts(50)'); t.wait_for_timeout(2000)
-    check('both earnings counted (60 + 50 + 50 = 160)', board()['players']['addy'].get('bolts') == 160, board()['players']['addy'].get('bolts'))
+    check('both earnings counted (120 + 50 + 50 = 220)', board()['players']['addy'].get('bolts') == 220, board()['players']['addy'].get('bolts'))
     # 5. can't buy what you can't afford, even if the device thinks you can
     t.evaluate("(function(){ return 1; })()")
     req = urllib.request.Request(API, data=json.dumps({'op': {'id':'jameson','type':'buy','item':'rex','opId':'cheat-1'}}).encode(), headers={'content-type':'application/json'}, method='POST')

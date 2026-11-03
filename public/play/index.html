@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#4FA8F0">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dino Dash">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>body{margin:0;font-size:14px;font-family:system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
 <script>
 // Score server connector for the Netlify version. Mimics the small part of the Claude db API the game uses.
@@ -118,7 +124,7 @@ h1 {
 .scores { display: flex; gap: 8px; }
 .titlewrap { display: flex; align-items: center; gap: 12px; min-width: 0; }
 /* while a run is going, keep the screen clean: only the pause button stays; sound, music and Home live on the pause card */
-body.playing #muteBtn, body.playing #musicBtn { display: none; }
+body.playing #muteBtn, body.playing #musicBtn, body.playing #fsBtn { display: none; }
 body.playing a.homebtn { visibility: hidden; }
 .pausetoggles { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .ptoggle { font-family: var(--body); font-weight: 700; font-size: 16px; color: var(--navy); background: #EAF4FE; border: 3px solid var(--navy); border-radius: 999px; padding: 6px 16px; min-height: 42px; cursor: pointer; }
@@ -524,6 +530,9 @@ button.go, button.shopbtn { transition: transform .12s ease-out, box-shadow .12s
   </div>
 
   <div class="ctrls">
+    <button class="ctrl" id="fsBtn" type="button" aria-label="Full screen" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"></path></svg>
+    </button>
     <button class="ctrl" id="muteBtn" type="button" aria-label="Mute sound" aria-pressed="false">
       <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 8.5a5 5 0 0 1 0 7"></path><path d="M19 6a8.5 8.5 0 0 1 0 12"></path></svg>
       <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M17 9l5 6M22 9l-5 6"></path></svg>
@@ -3012,12 +3021,12 @@ var OBSART = (function () {
   // ---------- bolts wallet and Dino Shop ----------
   var ITEMS = [
     { id: 'truck', kind: 'outfit', name: 'Truck PJs', desc: 'The classic yellow trucks', price: 0 },
-    { id: 'dino', kind: 'outfit', name: 'Dino PJs', desc: 'Green, with spikes and a tail', price: 40 },
-    { id: 'fire', kind: 'outfit', name: 'Fire Chief', desc: 'Red with shiny stripes', price: 60 },
-    { id: 'space', kind: 'outfit', name: 'Space Ranger', desc: 'Stars and a little planet', price: 80 },
-    { id: 'power', kind: 'upgrade', use: true, name: 'Super Power', desc: '14 seconds of Dino Power, whenever you want', price: 25 },
-    { id: 'magnet', kind: 'upgrade', use: true, name: 'Dino Magnet', desc: 'Pulls dinos and trucks to you for 30 seconds', price: 25 },
-    { id: 'rex', kind: 'ride', use: true, name: 'Rex the T-Rex', desc: 'Ride Rex for 30 seconds. He stomps a block every 6 seconds', price: 60 }
+    { id: 'dino', kind: 'outfit', name: 'Dino PJs', desc: 'Green, with spikes and a tail', price: 80 },
+    { id: 'fire', kind: 'outfit', name: 'Fire Chief', desc: 'Red with shiny stripes', price: 120 },
+    { id: 'space', kind: 'outfit', name: 'Space Ranger', desc: 'Stars and a little planet', price: 160 },
+    { id: 'power', kind: 'upgrade', use: true, name: 'Super Power', desc: '14 seconds of Dino Power, whenever you want', price: 40 },
+    { id: 'magnet', kind: 'upgrade', use: true, name: 'Dino Magnet', desc: 'Pulls dinos and trucks to you for 30 seconds', price: 40 },
+    { id: 'rex', kind: 'ride', use: true, name: 'Rex the T-Rex', desc: 'Ride Rex for 30 seconds. He stomps a block every 6 seconds', price: 100 }
   ];
   var wallets = {};
   var dirty = {};
@@ -3285,8 +3294,33 @@ var OBSART = (function () {
     for (var i = 0; i < 6; i++) sparks.push({ x: P.x + 46, y: GROUND - lift - 68, vx: 80 + Math.random() * 160, vy: (Math.random() - 0.5) * 160, life: 0.25, max: 0.25, c: '#BFF0FF' });
   }
 
+  // Full screen + sideways on phones (Android browsers). iPhone Safari can't do this; the installed app can.
+  var fsBtn = document.getElementById('fsBtn');
+  var isApp = window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || navigator.standalone;
+  var fsRoot = document.documentElement;
+  function inFs() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+  function goFs() {
+    if (isApp || inFs()) return;
+    var req = fsRoot.requestFullscreen || fsRoot.webkitRequestFullscreen;
+    if (!req) return;
+    try {
+      var r = req.call(fsRoot, { navigationUI: 'hide' });
+      var lock = function () { try { screen.orientation.lock('landscape').catch(function () {}); } catch (e) {} };
+      if (r && r.then) r.then(lock, function () {}); else lock();
+    } catch (e) {}
+  }
+  function leaveFs() { try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {} }
+  var canFs = !isApp && !!(fsRoot.requestFullscreen || fsRoot.webkitRequestFullscreen);
+  if (canFs) {
+    fsBtn.hidden = false;
+    fsBtn.addEventListener('click', function () { if (inFs()) leaveFs(); else goFs(); });
+  }
+  var coarse = window.matchMedia('(pointer: coarse)').matches;
+  if ('serviceWorker' in navigator) window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js').catch(function () {}); });
+
   function start() {
     if (!current) { startPanel.hidden = false; nameInput.focus(); return; }
+    if (coarse) goFs();
     SFX.unlock();
     SFX.play('click');
     state = 'play';
