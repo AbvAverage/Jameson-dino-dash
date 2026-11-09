@@ -1349,6 +1349,7 @@ var SFX = (function () {
     buy: function () { [784, 988, 1175, 1568].forEach(function (f, i) { tone('square', f, null, 0.09, 0.06, i * 0.06); tone('triangle', f, null, 0.12, 0.12, i * 0.06); }); },
     screech: function () { tone('sawtooth', 1400, 900, 0.18, 0.05); tone('square', 1700, 1100, 0.14, 0.035, 0.08); },
     rumble: function () { noise(0.45, 0.22, 300, 80); tone('sine', 70, 50, 0.4, 0.18); },
+    slip: function () { tone('sine', 500, 1400, 0.25, 0.12); tone('triangle', 900, 1800, 0.18, 0.06, 0.05); },
     splat: function () { noise(0.18, 0.3, 1200, 200); tone('sine', 220, 90, 0.16, 0.14); },
     zone: function () { [392, 523, 659, 784].forEach(function (f, i) { tone('triangle', f, null, 0.22, 0.13, i * 0.1); }); tone('sine', 196, 392, 0.5, 0.08, 0, 'lin'); },
     best: function () { [523, 659, 784, 1047, 1319].forEach(function (f, i) { tone('triangle', f, null, 0.2, 0.15, 0.25 + i * 0.09); }); },
@@ -1367,6 +1368,7 @@ var SFX = (function () {
     // root (MIDI), 4-bar chord progression (semitones from root), tempo, lead voice, swing, lead rhythm (16 steps)
     jungle:  { root: 60, bpm: 126, prog: [[0, 4, 7], [7, 11, 14], [9, 12, 16], [5, 9, 12]], lead: 'triangle', swing: 0.0,  rh: [1,0,1,0, 1,1,0,1, 1,0,1,0, 1,0,1,1], bassRh: [1,0,0,1, 0,0,1,0, 1,0,0,1, 0,0,1,0] },
     volcano: { root: 57, bpm: 138, prog: [[0, 3, 7], [-4, 0, 3], [3, 7, 10], [-2, 2, 5]], lead: 'square',   swing: 0.0,  rh: [1,0,1,1, 0,1,0,1, 1,0,1,1, 0,1,1,0], bassRh: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,1] },
+    frosty:  { root: 67, bpm: 120, prog: [[0, 4, 7], [-3, 0, 4], [-7, -3, 0], [-5, -1, 2]], lead: 'triangle', swing: 0.08, bells: true, rh: [1,0,1,0, 1,0,1,1, 1,0,1,0, 1,1,0,0], bassRh: [1,0,0,0, 1,0,1,0, 1,0,0,0, 1,0,1,0] },
     beach:   { root: 65, bpm: 112, prog: [[0, 4, 7], [5, 9, 12], [7, 11, 14], [5, 9, 12]], lead: 'sine',     swing: 0.16, rh: [1,0,0,1, 0,0,1,0, 1,0,1,0, 0,1,0,0], bassRh: [1,0,0,0, 0,0,1,0, 1,0,0,0, 0,0,1,0] },
     bonus:   { root: 72, bpm: 148, prog: [[0, 4, 7], [9, 12, 16], [5, 9, 12], [7, 11, 14]], lead: 'triangle', swing: 0.0,  rh: [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1], bassRh: [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0] }
   };
@@ -1392,6 +1394,8 @@ var SFX = (function () {
     if (pos % 4 === 0) { var o = ac.createOscillator(), g = ac.createGain(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14); o.connect(g); g.connect(mus.gain); o.start(t); o.stop(t + 0.16); }
     if (pos === 4 || pos === 12) mnoise(t, 0.11, 0.22, 'bandpass', 1800);
     if (pos % 2 === 0) mnoise(t, 0.035, 0.07, 'highpass', 7000);
+    // sleigh bells for the snowy song
+    if (S.bells && pos % 4 === 2) { mnoise(t, 0.07, 0.06, 'highpass', 8500); mnote('sine', S.root + 24 + ch[0], t, len * 0.6, 0.025); }
     // bass
     if (S.bassRh[pos]) mnote('triangle', S.root - 12 + ch[0] + (pos >= 8 && bar % 2 ? 7 : 0), t, len * 1.8, 0.34);
     // lead: arpeggio over the chord, rising then turning back down at the end of the phrase
@@ -2058,7 +2062,7 @@ var SKYART = (function () {
 
 </script>
 <script>
-// Volcano Valley and Sunny Beach scenes. Same interface as JUNGLE: draw() behind the action, drawFront() in front.
+// Volcano Valley, Sunny Beach and Frosty Peaks scenes. Same interface as JUNGLE: draw() behind the action, drawFront() in front.
 var ZONES = (function () {
   var K = JUNGLE.kit;
   var V = {}, B = {}, vReady = false, bReady = false;
@@ -2507,15 +2511,266 @@ var ZONES = (function () {
     ctx.restore();
   }
 
+
+  // ---------------- Frosty Peaks ----------------
+  var F = {}, fReady = false;
+
+  // a jagged mountain range with snowy caps; first and last points match so it tiles
+  function makePeaks(seed, tileW, h, rock, rockD, snow, snowD, capFrac) {
+    var r = K.rnd(seed), sp = K.mk(tileW, h), g = sp.g;
+    var pts = [], x = 0, up = true;
+    while (x < tileW) {
+      pts.push([x, up ? h * (0.05 + r() * 0.3) : h * (0.42 + r() * 0.25)]);
+      x += (up ? 50 : 40) + r() * 70; up = !up;
+    }
+    pts.push([tileW, pts[0][1]]);
+    function outline() { g.beginPath(); g.moveTo(0, h); pts.forEach(function (p) { g.lineTo(p[0], p[1]); }); g.lineTo(tileW, h); g.closePath(); }
+    var gr = g.createLinearGradient(0, 0, 0, h);
+    gr.addColorStop(0, rock); gr.addColorStop(1, rockD);
+    outline(); g.fillStyle = gr; g.fill();
+    g.save(); outline(); g.clip();
+    // shadowed right-hand faces
+    g.fillStyle = 'rgba(30,50,90,0.22)';
+    for (var i = 0; i < pts.length - 1; i++) {
+      var a = pts[i], b = pts[i + 1];
+      if (a[1] < b[1]) { g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.lineTo(b[0] - 10, h); g.lineTo(a[0] + 6, h); g.closePath(); g.fill(); }
+    }
+    // snow caps hanging down from every peak, with drippy edges
+    for (var j = 0; j < pts.length; j++) {
+      var p = pts[j];
+      if (p[1] > h * 0.36) continue;
+      var capH = h * capFrac + r() * h * 0.12, half = 30 + r() * 26;
+      var sg = g.createLinearGradient(p[0] - half, 0, p[0] + half, 0);
+      sg.addColorStop(0, snow); sg.addColorStop(0.55, snow); sg.addColorStop(1, snowD);
+      g.fillStyle = sg;
+      g.beginPath(); g.moveTo(p[0], p[1] - 2);
+      g.lineTo(p[0] + half, p[1] + capH * 0.9);
+      for (var d = 1; d <= 4; d++) {
+        var dx = p[0] + half - d * (half * 2 / 5);
+        g.quadraticCurveTo(dx + half * 0.2, p[1] + capH * (0.55 + r() * 0.25), dx, p[1] + capH * (0.8 + r() * 0.3));
+      }
+      g.lineTo(p[0] - half, p[1] + capH * 0.8);
+      g.closePath(); g.fill();
+    }
+    g.restore();
+    return sp;
+  }
+
+  function makePine(seed, h, snowy) {
+    var r = K.rnd(seed), w = Math.round(h * 0.62), sp = K.mk(w, h + 10), g = sp.g, cx = w / 2;
+    g.fillStyle = '#5A3A24'; g.fillRect(cx - 5, h - 22, 10, 30);
+    var tiers = 4;
+    for (var i = 0; i < tiers; i++) {
+      var tb = h - 18 - i * (h - 30) / tiers * 0.92, tt = tb - (h - 10) / tiers * 1.35;
+      var half = w * 0.5 * (1 - i * 0.18);
+      var gr = g.createLinearGradient(cx - half, 0, cx + half, 0);
+      gr.addColorStop(0, '#2F7A5A'); gr.addColorStop(0.6, '#1E5A44'); gr.addColorStop(1, '#123C30');
+      g.fillStyle = gr; g.strokeStyle = 'rgba(11,30,45,0.55)'; g.lineWidth = 2; g.lineJoin = 'round';
+      g.beginPath(); g.moveTo(cx, tt);
+      g.quadraticCurveTo(cx + half * 0.45, tb - (tb - tt) * 0.35, cx + half, tb);
+      g.quadraticCurveTo(cx, tb + 7, cx - half, tb);
+      g.quadraticCurveTo(cx - half * 0.45, tb - (tb - tt) * 0.35, cx, tt);
+      g.closePath(); g.fill(); g.stroke();
+      if (snowy) {
+        // snow resting on the tier's top edge
+        g.fillStyle = '#F4FAFF';
+        g.beginPath(); g.moveTo(cx, tt + 1);
+        g.quadraticCurveTo(cx + half * 0.4, tb - (tb - tt) * 0.4, cx + half * 0.92, tb - 3);
+        for (var k = 0; k < 5; k++) { var sx = cx + half * 0.92 - (k + 1) * half * 1.84 / 5; g.quadraticCurveTo(sx + half * 0.18, tb + 2 - r() * 4, sx, tb - 6 - r() * 6); }
+        g.quadraticCurveTo(cx - half * 0.4, tb - (tb - tt) * 0.4, cx, tt + 1);
+        g.closePath(); g.fill();
+        g.fillStyle = 'rgba(150,190,230,0.55)';
+        g.beginPath(); g.ellipse(cx + half * 0.4, tb - 6, half * 0.35, 2.5, 0.3, 0, 6.3); g.fill();
+      }
+    }
+    // little star of snow on the very top
+    g.fillStyle = '#FFFFFF'; g.beginPath(); g.arc(cx, h - 18 - (tiers - 1) * (h - 30) / tiers * 0.92 - (h - 10) / tiers * 1.35 + 3, 4, 0, 6.3); g.fill();
+    return sp;
+  }
+
+  function makeSnowTile(tileW, depth) {
+    var lip = 14, sp = K.mk(tileW, depth + lip), g = sp.g, y0 = lip, r = K.rnd(83);
+    var dg = g.createLinearGradient(0, y0, 0, y0 + depth);
+    dg.addColorStop(0, '#F6FBFF'); dg.addColorStop(0.45, '#DCEBF8'); dg.addColorStop(1, '#B9D2EA');
+    g.fillStyle = dg; g.fillRect(0, y0, tileW, depth);
+    // soft blue drifts
+    for (var i = 0; i < 12; i++) {
+      var y = y0 + 20 + r() * (depth - 30), x = r() * tileW, w = 50 + r() * 80;
+      [-tileW, 0, tileW].forEach(function (o) {
+        g.strokeStyle = 'rgba(140,180,220,0.45)'; g.lineWidth = 2;
+        g.beginPath(); g.moveTo(x + o, y); g.quadraticCurveTo(x + o + w / 2, y - 6, x + o + w, y); g.stroke();
+        g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 1.4;
+        g.beginPath(); g.moveTo(x + o + 4, y - 3); g.quadraticCurveTo(x + o + w / 2, y - 9, x + o + w - 4, y - 3); g.stroke();
+      });
+    }
+    // frozen pebbles and glints
+    for (var p = 0; p < 18; p++) {
+      var px = r() * tileW, py = y0 + 22 + r() * (depth - 30), kind = r();
+      [-tileW, 0, tileW].forEach(function (o) {
+        if (kind < 0.4) {
+          g.fillStyle = '#9DB2C6'; g.beginPath(); g.ellipse(px + o, py, 3 + kind * 6, 2 + kind * 3, 0, 0, 6.3); g.fill();
+          g.fillStyle = '#FFFFFF'; g.beginPath(); g.ellipse(px + o, py - 2, 3 + kind * 5, 1.5, 0, Math.PI, 0); g.fill();
+        } else {
+          g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineWidth = 1.2;
+          g.beginPath(); g.moveTo(px + o - 3, py); g.lineTo(px + o + 3, py); g.moveTo(px + o, py - 3); g.lineTo(px + o, py + 3); g.stroke();
+        }
+      });
+    }
+    // bumpy, bright top edge of packed snow
+    var tg = g.createLinearGradient(0, y0 - 4, 0, y0 + 12);
+    tg.addColorStop(0, '#FFFFFF'); tg.addColorStop(1, '#E2EEF9');
+    g.fillStyle = tg;
+    g.beginPath(); g.moveTo(0, y0 + 4);
+    for (var xx = 0; xx <= tileW; xx += 8) g.lineTo(xx, y0 + 8 + Math.sin(xx * 0.09) * 2 + Math.sin(xx * 0.031) * 2);
+    g.lineTo(tileW, y0 - 2);
+    for (var bx = tileW; bx >= 0; bx -= 16) g.quadraticCurveTo(bx - 8, y0 - 7 - Math.abs(Math.sin(bx * 0.07)) * 3, bx - 16, y0 - 2);
+    g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(120,165,210,0.6)'; g.lineWidth = 1.6;
+    g.beginPath(); for (var lx = 0; lx <= tileW; lx += 8) { var ly = y0 + 9 + Math.sin(lx * 0.09) * 2 + Math.sin(lx * 0.031) * 2; if (lx) g.lineTo(lx, ly); else g.moveTo(lx, ly); } g.stroke();
+    sp.lip = lip;
+    return sp;
+  }
+
+  function makeSnowman() {
+    var sp = K.mk(90, 120), g = sp.g, OUTL = 'rgba(11,30,45,0.7)';
+    function ball(x, y, r) {
+      var bg = g.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r);
+      bg.addColorStop(0, '#FFFFFF'); bg.addColorStop(0.7, '#E6F0FA'); bg.addColorStop(1, '#B8CFE6');
+      g.fillStyle = bg; g.strokeStyle = OUTL; g.lineWidth = 2;
+      g.beginPath(); g.arc(x, y, r, 0, 6.3); g.fill(); g.stroke();
+    }
+    ball(45, 92, 26); ball(45, 56, 19); ball(45, 28, 14);
+    // stick arms
+    g.strokeStyle = '#6B4424'; g.lineWidth = 3; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(28, 54); g.lineTo(8, 40); g.moveTo(14, 44); g.lineTo(10, 34); g.moveTo(62, 54); g.lineTo(84, 44); g.moveTo(77, 47); g.lineTo(82, 37); g.stroke();
+    // scarf
+    g.fillStyle = '#FF5A5A'; g.beginPath(); g.ellipse(45, 41, 15, 4.5, 0, 0, 6.3); g.fill();
+    g.fillRect(48, 41, 7, 16);
+    g.fillStyle = '#FFE066'; g.fillRect(48, 49, 7, 3);
+    // hat
+    g.fillStyle = '#2A3550'; g.fillRect(34, 12, 22, 4); g.fillRect(37, -2, 16, 15);
+    g.fillStyle = '#7FA2FF'; g.fillRect(37, 9, 16, 3);
+    // face: coal eyes, carrot nose, smile
+    g.fillStyle = '#1A1A22';
+    g.beginPath(); g.arc(40, 25, 2.2, 0, 6.3); g.arc(51, 25, 2.2, 0, 6.3); g.fill();
+    [[38, 34], [42, 36], [47, 36], [51, 34]].forEach(function (d) { g.beginPath(); g.arc(d[0], d[1], 1.3, 0, 6.3); g.fill(); });
+    g.fillStyle = '#FF9A52'; g.beginPath(); g.moveTo(45, 28); g.lineTo(60, 31); g.lineTo(45, 32); g.closePath(); g.fill();
+    // buttons
+    g.fillStyle = '#1A1A22'; [52, 62, 86, 98].forEach(function (y) { g.beginPath(); g.arc(45, y, 2.2, 0, 6.3); g.fill(); });
+    return sp;
+  }
+
+  function makeDrift(seed) {
+    var r = K.rnd(seed), sp = K.mk(170, 70), g = sp.g;
+    var dg = g.createLinearGradient(0, 10, 0, 70);
+    dg.addColorStop(0, '#FFFFFF'); dg.addColorStop(1, '#C8DCF0');
+    g.fillStyle = dg; g.strokeStyle = 'rgba(11,30,45,0.35)'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(0, 70);
+    g.quadraticCurveTo(20, 30 + r() * 10, 60, 28 + r() * 8);
+    g.quadraticCurveTo(100, 14 + r() * 10, 130, 34);
+    g.quadraticCurveTo(160, 46, 170, 70);
+    g.closePath(); g.fill(); g.stroke();
+    // a pine sprig poking out
+    g.strokeStyle = '#1E5A44'; g.lineWidth = 2.4; g.lineCap = 'round';
+    for (var i = 0; i < 6; i++) { g.beginPath(); g.moveTo(112, 36); g.lineTo(112 + Math.cos(-2.6 + i * 0.22) * 22, 36 + Math.sin(-2.6 + i * 0.22) * 22); g.stroke(); }
+    g.fillStyle = 'rgba(255,255,255,0.95)'; g.beginPath(); g.ellipse(60, 30, 30, 4, -0.1, 0, 6.3); g.fill();
+    return sp;
+  }
+
+  function fInit() {
+    F.peaksFar = makePeaks(41, 900, 210, '#9DB4D8', '#7A92BC', '#FFFFFF', '#D6E4F5', 0.34);
+    F.peaksMid = makePeaks(53, 760, 160, '#6F86B4', '#4E6595', '#F8FCFF', '#C9DAF0', 0.3);
+    F.pines = [makePine(3, 170, true), makePine(11, 210, true), makePine(19, 150, true)];
+    F.pinesBack = [makePine(7, 120, true), makePine(13, 100, true)];
+    F.ground = makeSnowTile(512, 140);
+    F.snowman = makeSnowman();
+    F.drifts = [makeDrift(5), makeDrift(16)];
+    fReady = true;
+  }
+
+  function frostyDraw(ctx, W, H, GROUND, dist, t) {
+    if (!fReady) fInit();
+    var sky = ctx.createLinearGradient(0, 0, 0, GROUND);
+    sky.addColorStop(0, '#5B8FD8'); sky.addColorStop(0.55, '#A9CFF2'); sky.addColorStop(1, '#E8F4FF');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, GROUND + 4);
+    // pale winter sun
+    var sx = W * 0.22, sy = 70;
+    var sg = ctx.createRadialGradient(sx, sy, 8, sx, sy, 110);
+    sg.addColorStop(0, 'rgba(255,255,240,0.9)'); sg.addColorStop(0.3, 'rgba(255,250,225,0.35)'); sg.addColorStop(1, 'rgba(255,250,225,0)');
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(sx, sy, 110, 0, 6.3); ctx.fill();
+    ctx.fillStyle = '#FFFDF0'; ctx.beginPath(); ctx.arc(sx, sy, 28, 0, 6.3); ctx.fill();
+    // soft clouds
+    for (var c = 0; c < 3; c++) {
+      var cx = ((hash(c + 30) * 1400 - dist * 0.03 - t * 5) % 1400 + 1400) % 1400 - 150, cy = 46 + hash(c + 34) * 60, s = 0.6 + hash(c + 38) * 0.5;
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      [[0, 0, 60, 18], [26, -12, 34, 22], [-24, -6, 28, 16]].forEach(function (e) { ctx.beginPath(); ctx.ellipse(cx + e[0] * s, cy + e[1] * s, e[2] * s, e[3] * s, 0, 0, 6.3); ctx.fill(); });
+    }
+    // mountains, far and mid
+    K.tileX(ctx, F.peaksFar, dist * 0.04, GROUND - 60 - F.peaksFar.h, W);
+    var hz = ctx.createLinearGradient(0, GROUND - 200, 0, GROUND - 40);
+    hz.addColorStop(0, 'rgba(235,245,255,0)'); hz.addColorStop(1, 'rgba(235,245,255,0.55)');
+    ctx.fillStyle = hz; ctx.fillRect(0, GROUND - 200, W, 160);
+    K.tileX(ctx, F.peaksMid, dist * 0.1, GROUND - 40 - F.peaksMid.h, W);
+    // snowy hills with a band of little pines
+    ctx.fillStyle = '#EAF3FC';
+    ctx.beginPath(); ctx.moveTo(0, GROUND);
+    var ho = dist * 0.22;
+    for (var x = 0; x <= W + 20; x += 20) ctx.lineTo(x, GROUND - 74 + Math.sin((x + ho) * 0.006) * 16 + Math.sin((x + ho) * 0.017) * 6);
+    ctx.lineTo(W, GROUND); ctx.closePath(); ctx.fill();
+    K.scatter(ctx, W, dist * 0.22, 90, function (x2, k, h) {
+      if (h < 0.35) return;
+      var sp = F.pinesBack[((k % 2) + 2) % 2], sc = 0.45 + h * 0.25;
+      var yb = GROUND - 70 + Math.sin((x2 + ho) * 0.006) * 16 + Math.sin((x2 + ho) * 0.017) * 6;
+      ctx.globalAlpha = 0.75; K.blit(ctx, sp, x2, yb - sp.h * sc + 6, sc); ctx.globalAlpha = 1;
+    });
+    // big pines
+    K.scatter(ctx, W, dist * 0.42, 300, function (x3, k2, h2) {
+      if (h2 < 0.2) return;
+      var sp2 = F.pines[((k2 % 3) + 3) % 3], sc2 = 0.85 + h2 * 0.35;
+      K.blit(ctx, sp2, x3, GROUND + 6 - sp2.h * sc2, sc2);
+    });
+    // a snowman now and then, just behind the path
+    K.scatter(ctx, W, dist * 0.7, 700, function (x4, k3, h3) {
+      if (h3 < 0.55) return;
+      K.blit(ctx, F.snowman, x4, GROUND - F.snowman.h * 0.8 + 4, 0.8);
+    });
+    K.tileX(ctx, F.ground, dist, GROUND - F.ground.lip, W);
+  }
+
+  function frostyFront(ctx, W, H, GROUND, dist, t) {
+    // falling snow, big flakes near and small far
+    for (var i = 0; i < 70; i++) {
+      var near = i < 18, sp = near ? 70 + hash(i) * 40 : 30 + hash(i) * 30;
+      var fy = ((hash(i + 11) * (H + 40) + t * sp) % (H + 40)) - 20;
+      var drift = Math.sin(t * (0.8 + hash(i + 5)) + i) * (near ? 18 : 10);
+      var fx = ((hash(i + 23) * W * 1.4 - dist * (near ? 0.9 : 0.3) + drift) % W + W) % W;
+      var r = near ? 2.6 + hash(i + 3) * 2 : 1 + hash(i + 3) * 1.4;
+      ctx.fillStyle = 'rgba(255,255,255,' + (near ? 0.95 : 0.7) + ')';
+      ctx.beginPath(); ctx.arc(fx, fy, r, 0, 6.3); ctx.fill();
+    }
+    // snow drifts passing low and fast
+    K.scatter(ctx, W, dist * 1.45, 540, function (x, k, h) {
+      if (h < 0.35) return;
+      K.blit(ctx, F.drifts[((k % 2) + 2) % 2], x, H - F.drifts[0].h * 0.75, 1.1);
+    });
+    // cold bright glare
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    var g = ctx.createRadialGradient(W * 0.22, 70, 20, W * 0.22, 70, W * 0.55);
+    g.addColorStop(0, 'rgba(230,245,255,0.12)'); g.addColorStop(1, 'rgba(230,245,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
   return {
     volcano: { draw: volcanoDraw, drawFront: volcanoFront },
-    beach: { draw: beachDraw, drawFront: beachFront }
+    beach: { draw: beachDraw, drawFront: beachFront },
+    frosty: { draw: frostyDraw, drawFront: frostyFront }
   };
 })();
 
 </script>
 <script>
-// Obstacle art: rolling boulder, pterodactyl, mud pit, warning marker.
+// Obstacle art: rolling boulder, pterodactyl, mud pit (an ice patch in Frosty Peaks), warning marker.
 var OBSART = (function () {
   var OUT = 'rgba(11,30,45,0.85)';
 
@@ -2534,7 +2789,25 @@ var OBSART = (function () {
       ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 22 + sl * 10 + Math.sin(t * 20 + sl) * 4, ly); ctx.stroke();
     }
     ctx.save(); ctx.rotate(rot);
-    if (zone === 'beach') {
+    if (zone === 'frosty') {
+      // a big rolling snowball with a few twigs and pebbles stuck in it
+      var wg = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r);
+      wg.addColorStop(0, '#FFFFFF'); wg.addColorStop(0.6, '#E2EEF9'); wg.addColorStop(1, '#A8C2DE');
+      ctx.fillStyle = wg; ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.3); ctx.fill();
+      ctx.save(); ctx.clip();
+      ctx.fillStyle = 'rgba(140,175,215,0.45)';
+      [[-10, 8, 7], [12, -6, 6], [4, 16, 5], [-14, -12, 5]].forEach(function (b) { ctx.beginPath(); ctx.arc(b[0], b[1], b[2], 0, 6.3); ctx.fill(); });
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      [[-12, 6, 6], [10, -8, 5], [2, 14, 4], [-16, -14, 4]].forEach(function (b) { ctx.beginPath(); ctx.arc(b[0], b[1], b[2], 0, 6.3); ctx.fill(); });
+      ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.arc(r * 0.35, r * 0.35, r * 0.85, 0, 6.3); ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = '#6B4424'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(8, 4); ctx.lineTo(20, -6); ctx.moveTo(15, -2); ctx.lineTo(18, 4); ctx.stroke();
+      ctx.fillStyle = '#7E8C9A'; ctx.beginPath(); ctx.ellipse(-8, -10, 3, 2.2, 0.4, 0, 6.3); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-2, 12, 2.4, 1.8, 0, 0, 6.3); ctx.fill();
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.3);
+      ctx.strokeStyle = OUT; ctx.lineWidth = 3; ctx.stroke();
+    } else if (zone === 'beach') {
       // a big rolling coconut: husk, fibres, three eyes
       var cg = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r);
       cg.addColorStop(0, '#B8834A'); cg.addColorStop(0.55, '#7A4C26'); cg.addColorStop(1, '#43260F');
@@ -2597,8 +2870,8 @@ var OBSART = (function () {
   function ptero(ctx, x, y, t, zone) {
     var f = Math.sin(t * 8);            // -1 down stroke .. 1 up stroke
     var tipY = -8 - f * 46, tipX = -2 - f * 6;
-    var body = zone === 'volcano' ? ['#F07A44', '#A3341C', '#FFD08A'] : zone === 'beach' ? ['#62BDF0', '#2C6FA8', '#D8F2FF'] : ['#A47AE0', '#5A3A92', '#E6D6FF'];
-    var memb = zone === 'volcano' ? ['rgba(255,190,120,0.95)', 'rgba(200,90,40,0.95)'] : zone === 'beach' ? ['rgba(205,240,255,0.95)', 'rgba(90,160,220,0.95)'] : ['rgba(230,210,255,0.95)', 'rgba(140,100,210,0.95)'];
+    var body = zone === 'frosty' ? ['#8EE8D0', '#2E8C7A', '#E6FFF8'] : zone === 'volcano' ? ['#F07A44', '#A3341C', '#FFD08A'] : zone === 'beach' ? ['#62BDF0', '#2C6FA8', '#D8F2FF'] : ['#A47AE0', '#5A3A92', '#E6D6FF'];
+    var memb = zone === 'frosty' ? ['rgba(215,255,245,0.95)', 'rgba(70,170,150,0.95)'] : zone === 'volcano' ? ['rgba(255,190,120,0.95)', 'rgba(200,90,40,0.95)'] : zone === 'beach' ? ['rgba(205,240,255,0.95)', 'rgba(90,160,220,0.95)'] : ['rgba(230,210,255,0.95)', 'rgba(140,100,210,0.95)'];
     // motion lines trailing behind (to the right)
     ctx.lineCap = 'round';
     for (var ml = 0; ml < 3; ml++) {
@@ -2664,7 +2937,49 @@ var OBSART = (function () {
     ctx.beginPath(); ctx.ellipse(x, GROUND + 3, 36, 6, 0, 0, 6.3); ctx.fill();
   }
 
+  // a flat, shiny ice patch with snow banks at each end
+  function ice(ctx, x, w, GROUND, t) {
+    var y = GROUND + 3, cx = x + w / 2, rx = w / 2, ry = 11;
+    ctx.save();
+    var rg = ctx.createLinearGradient(0, y - ry - 6, 0, y + ry + 8);
+    rg.addColorStop(0, '#FFFFFF'); rg.addColorStop(1, '#B6CDE6');
+    ctx.beginPath(); ctx.ellipse(cx, y + 2, rx + 10, ry + 6, 0, 0, 6.3);
+    ctx.fillStyle = rg; ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = 2.5; ctx.stroke();
+    // the ice itself
+    ctx.beginPath(); ctx.ellipse(cx, y + 1, rx, ry, 0, 0, 6.3);
+    var g = ctx.createLinearGradient(0, y - ry, 0, y + ry);
+    g.addColorStop(0, '#E4F8FF'); g.addColorStop(0.5, '#9EDBF5'); g.addColorStop(1, '#5FAFDC');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.save(); ctx.clip();
+    // cracks
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.2; ctx.lineCap = 'round';
+    for (var c = 0; c < 4; c++) {
+      var sx = x + w * (0.15 + c * 0.22), sy = y + (c % 2 ? -3 : 4);
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + 10, sy - 3); ctx.lineTo(sx + 18, sy + 2); ctx.moveTo(sx + 10, sy - 3); ctx.lineTo(sx + 14, sy - 8); ctx.stroke();
+    }
+    // a gleam that slides across
+    var gx = x + ((t * 0.6) % 1.4 - 0.2) * w;
+    var sh = ctx.createLinearGradient(gx - 30, 0, gx + 30, 0);
+    sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.5, 'rgba(255,255,255,0.85)'); sh.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sh; ctx.fillRect(gx - 30, y - ry, 60, ry * 2 + 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.beginPath(); ctx.ellipse(cx - rx * 0.3, y - 3, rx * 0.32, 2.2, 0, 0, 6.3); ctx.fill();
+    ctx.restore();
+    ctx.beginPath(); ctx.ellipse(cx, y + 1, rx, ry, 0, 0, 6.3);
+    ctx.strokeStyle = 'rgba(40,110,170,0.5)'; ctx.lineWidth = 1.5; ctx.stroke();
+    // twinkles
+    for (var s = 0; s < 3; s++) {
+      var tw = Math.max(0, Math.sin(t * 4 + s * 2.1));
+      if (tw < 0.2) continue;
+      var tx = x + w * (0.25 + s * 0.25), ty = y - 2 + (s % 2) * 4, L = 3 + tw * 4;
+      ctx.strokeStyle = 'rgba(255,255,255,' + tw + ')'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(tx - L, ty); ctx.lineTo(tx + L, ty); ctx.moveTo(tx, ty - L); ctx.lineTo(tx, ty + L); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function mud(ctx, x, w, GROUND, t, zone) {
+    if (zone === 'frosty') { ice(ctx, x, w, GROUND, t); return; }
     var y = GROUND + 3, cx = x + w / 2, rx = w / 2, ry = 12;
     var pal = zone === 'beach'
       ? { rim: '#E2C887', rimD: '#B08F55', top: '#B6F1FA', bot: '#2C97C0', bub: 'rgba(255,255,255,0.95)', hi: 'rgba(255,255,255,0.85)', clump: '#CFB273' }
@@ -3208,14 +3523,14 @@ var OBSART = (function () {
   var run = { closes: 0, maxStreak: 0, bonusVisits: 0, shieldSaves: 0 };
   var REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   var speed, dist, bonus, dinos, trucks, blasts, spawnIn, goodIn, powerIn, power, shake, t, dustIn;
-  var ZONE_LEN = 20000, ZONE_KEYS = ['jungle', 'volcano', 'beach'], ZONE_NAMES = { jungle: 'JUNGLE RUN', volcano: 'VOLCANO VALLEY', beach: 'SUNNY BEACH' };
+  var ZONE_LEN = 20000, ZONE_KEYS = ['jungle', 'volcano', 'beach', 'frosty'], ZONE_NAMES = { jungle: 'JUNGLE RUN', volcano: 'VOLCANO VALLEY', beach: 'SUNNY BEACH', frosty: 'FROSTY PEAKS' };
   var banners = [], curBanner = null;
   var zoneIdx = 0, zoneKey = 'jungle', prevZoneKey = null, zoneFade = 1, hintShown = {}, vel = 330, fadeCanvas = null;
   var mode = 'run', pickupsRun = 0, portalGap = 20, nextPortal = 20, portal = null, portalIn = 0, warp = null, B = null, grace = 0, rexCool = 0, savedPower = 0;
   var keys = { left: false, right: false };
 
   function reset() {
-    P = { x: 130, y: GROUND, vy: 0, jumps: 0, onGround: true, phase: 0, squash: 0, spin: 0, spinT: 0, shootT: 0, cool: 0, face: 1, slowT: 0, roarT: 0 };
+    P = { x: 130, y: GROUND, vy: 0, jumps: 0, onGround: true, phase: 0, squash: 0, spin: 0, spinT: 0, shootT: 0, cool: 0, face: 1, slowT: 0, slipT: 0, roarT: 0 };
     obstacles = []; goodies = []; shots = []; debris = []; sparks = []; dust = []; popups = [];
     clouds = [];
     for (var i = 0; i < 6; i++) clouds.push({ x: Math.random() * 1400, y: 30 + Math.random() * 120, s: 0.6 + Math.random() * 0.7 });
@@ -3414,7 +3729,7 @@ var OBSART = (function () {
     SFX.play('bonk');
     var s = score();
     var titles = ['Oops! Bonk!', 'Uh oh, blocks!', 'Tumble time!', 'Whoopsie!'];
-    if (cause === 'boulder') titles = zoneKey === 'beach' ? ['Coconut bonk!', 'Rolled over!'] : ['Rock and rolled!', 'Boulder bonk!'];
+    if (cause === 'boulder') titles = zoneKey === 'beach' ? ['Coconut bonk!', 'Rolled over!'] : zoneKey === 'frosty' ? ['Snowball bonk!', 'Snowed under!'] : ['Rock and rolled!', 'Boulder bonk!'];
     if (cause === 'ptero') titles = ['Swooped!', 'Ptero got you!', 'Watch the sky!'];
     document.getElementById('overTitle').textContent = titles[Math.floor(Math.random() * titles.length)];
     document.getElementById('finalScore').textContent = s;
@@ -3454,6 +3769,7 @@ var OBSART = (function () {
     { id: 'blast8', text: 'Blast 8 blocks in one run', bolts: 15, test: function () { return blasts >= 8; } },
     { id: 'volcano', text: 'Reach Volcano Valley', bolts: 15, test: function () { return zoneIdx >= 1; } },
     { id: 'beach', text: 'Reach Sunny Beach', bolts: 25, test: function () { return zoneIdx >= 2; } },
+    { id: 'frosty', text: 'Reach Frosty Peaks', bolts: 35, test: function () { return zoneIdx >= 3; } },
     { id: 'score1000', text: 'Score 1,000 in one run', bolts: 15, test: function () { return score() >= 1000; } },
     { id: 'score2500', text: 'Score 2,500 in one run', bolts: 25, test: function () { return score() >= 2500; } },
     { id: 'bonus', text: 'Visit the bonus world', bolts: 20, test: function () { return run.bonusVisits >= 1; } },
@@ -3712,7 +4028,7 @@ var OBSART = (function () {
         ctx.beginPath(); ctx.arc(mx - 9, my - 6, 6, 0, 6.3); ctx.arc(mx + 8, my + 9, 4.5, 0, 6.3); ctx.arc(mx + 10, my - 10, 3, 0, 6.3); ctx.fill();
         ctx.globalAlpha = 1;
       }
-    } else if (st.n > 0.3 && zoneKey !== 'volcano') {
+    } else if (st.n > 0.3 && zoneKey !== 'volcano' && zoneKey !== 'frosty') {
       // fireflies drifting over the ground
       for (var j = 0; j < 16; j++) {
         var span = W + 200;
@@ -3738,7 +4054,7 @@ var OBSART = (function () {
   function explode(o, quiet) {
     if (o.type === 'boulder') {
       var bcx = o.x + o.r, bcy = GROUND - o.r;
-      var rc = o.zone === 'beach' ? [['#9A6A3A', '#5A3418']] : o.zone === 'volcano' ? [['#5B4A4A', '#2A1E1E']] : [['#A39D92', '#605A52']];
+      var rc = o.zone === 'frosty' ? [['#FFFFFF', '#BFD6EE']] : o.zone === 'beach' ? [['#9A6A3A', '#5A3418']] : o.zone === 'volcano' ? [['#5B4A4A', '#2A1E1E']] : [['#A39D92', '#605A52']];
       for (var kk = 0; kk < 12; kk++) debris.push({ x: bcx, y: bcy, vx: 40 + Math.random() * 340, vy: -240 - Math.random() * 320, r: Math.random() * 6, vr: (Math.random() - 0.5) * 16, s: 7 + Math.random() * 9, c: rc[0], life: 1.4 });
       for (var jj = 0; jj < 18; jj++) { var aa = Math.random() * 6.28, ss = 120 + Math.random() * 280; sparks.push({ x: bcx, y: bcy, vx: Math.cos(aa) * ss, vy: Math.sin(aa) * ss, life: 0.45, max: 0.45, c: jj % 2 ? '#FFE066' : '#FFFFFF' }); }
       bonus += 3; blasts += 1;
@@ -3807,9 +4123,9 @@ var OBSART = (function () {
     // zones: every ZONE_LEN of distance the world changes and the pace steps up
     var zi = Math.floor(dist / ZONE_LEN);
     if (zi !== zoneIdx) {
-      prevZoneKey = zoneKey; zoneIdx = zi; zoneKey = ZONE_KEYS[zi % 3]; zoneFade = 0;
+      prevZoneKey = zoneKey; zoneIdx = zi; zoneKey = ZONE_KEYS[zi % ZONE_KEYS.length]; zoneFade = 0;
       banners = []; curBanner = null;
-      banner(ZONE_NAMES[zoneKey] + '!', zoneKey === 'volcano' ? '#FF9A52' : zoneKey === 'beach' ? '#8FE2FF' : '#9BE27F', 2.4);
+      banner(ZONE_NAMES[zoneKey] + '!', zoneKey === 'volcano' ? '#FF9A52' : zoneKey === 'beach' ? '#8FE2FF' : zoneKey === 'frosty' ? '#E4F6FF' : '#9BE27F', 2.4);
       SFX.play('zone');
       if (musicOn) SFX.music(zoneKey);
     }
@@ -3825,7 +4141,8 @@ var OBSART = (function () {
     var target = Math.min(690, 330 + zoneIdx * 75 + frac * 45);
     speed += (target - speed) * Math.min(1, dt * 0.8);
     P.slowT = Math.max(0, P.slowT - dt);
-    vel = speed * (P.slowT > 0 && rushT <= 0 ? 0.6 : 1) * (rushT > 0 ? 1.4 : 1);
+    P.slipT = Math.max(0, P.slipT - dt);
+    vel = speed * (P.slowT > 0 && rushT <= 0 ? 0.6 : 1) * (P.slipT > 0 && rushT <= 0 ? 1.3 : 1) * (rushT > 0 ? 1.4 : 1);
     dist += vel * dt;
     SFX.musicTempo(Math.pow(330 / Math.max(330, speed), 0.3));
     var windRate = Math.max(0, (vel - 430) / 240) + (power > 0 ? 0.5 : 0);
@@ -3840,6 +4157,7 @@ var OBSART = (function () {
     }
     if (P.onGround) {
       if (P.slowT > 0 && Math.random() < 0.4) sparks.push({ x: P.x - 6, y: GROUND - 6, vx: -60 - Math.random() * 60, vy: -60 - Math.random() * 80, life: 0.35, max: 0.35, c: zoneKey === 'beach' ? '#BFF0FF' : zoneKey === 'volcano' ? '#3B2440' : '#7A4E26' });
+      if (P.slipT > 0 && Math.random() < 0.6) sparks.push({ x: P.x - 4, y: GROUND - 4, vx: -140 - Math.random() * 80, vy: -30 - Math.random() * 60, life: 0.3, max: 0.3, c: Math.random() < 0.5 ? '#FFFFFF' : '#BFF0FF' });
       P.phase += dt * (7 + vel / 90);
       dustIn -= dt;
       if (dustIn <= 0) { puff(P.x - 6, GROUND, 1, 10); dustIn = 0.14; }
@@ -3893,13 +4211,13 @@ var OBSART = (function () {
       if (o.type === 'boulder') {
         o.rot -= (vel + o.extra) * dt / o.r;
         if (!o.sounded && o.x < W + 120) { o.sounded = true; SFX.play('rumble'); }
-        if (o.x < W) hint('boulder', o.zone === 'beach' ? 'Rolling coconut! Jump!' : 'Rolling rock! Jump early!');
+        if (o.x < W) hint('boulder', o.zone === 'frosty' ? 'Rolling snowball! Jump!' : o.zone === 'beach' ? 'Rolling coconut! Jump!' : 'Rolling rock! Jump early!');
         if (Math.random() < 0.3) dust.push({ x: o.x + o.w, y: GROUND - 4, vx: 30 + Math.random() * 40, vy: -20 - Math.random() * 30, r: 3 + Math.random() * 4, life: 0.5, max: 0.5 });
       } else if (o.type === 'ptero') {
         if (!o.warned && o.x < W + 260) { o.warned = true; SFX.play('screech'); }
         if (o.x < W) hint('ptero', 'Pterodactyl! Stay on the ground!');
       } else if (o.type === 'mud') {
-        if (o.x < W) hint('mud', o.zone === 'volcano' ? 'Sticky tar! Double jump over!' : o.zone === 'beach' ? 'Puddle! Double jump over!' : 'Mud! Double jump over!');
+        if (o.x < W) hint('mud', o.zone === 'frosty' ? 'Slippery ice! Double jump over!' : o.zone === 'volcano' ? 'Sticky tar! Double jump over!' : o.zone === 'beach' ? 'Puddle! Double jump over!' : 'Mud! Double jump over!');
       }
       if ((o.type === 'blocks' || o.type === 'boulder') && !o.passed) {
         if (px2 > o.x && px1 < o.x + o.w) o.minClear = Math.min(o.minClear === undefined ? 1e9 : o.minClear, (GROUND - o.h) - P.y);
@@ -3928,6 +4246,16 @@ var OBSART = (function () {
       if (grace > 0) continue;
       if (o.type === 'mud') {
         if (P.onGround && P.x > o.x + 8 && P.x < o.x + o.w - 8 && !riding()) {
+          if (o.zone === 'frosty') {
+            // ice: you skid and whoosh forward for a moment
+            if (P.slipT <= 0.2) {
+              SFX.play('slip');
+              popups.push({ x: P.x + 40, y: P.y - 170, text: 'Wheee!', life: 0.8, col: '#BFF0FF' });
+              for (var ic = 0; ic < 10; ic++) sparks.push({ x: P.x + (Math.random() - 0.5) * 20, y: GROUND - 4, vx: (Math.random() - 0.7) * 260, vy: -60 - Math.random() * 120, life: 0.5, max: 0.5, c: ic % 2 ? '#FFFFFF' : '#BFF0FF' });
+            }
+            P.slipT = 1.0;
+            continue;
+          }
           if (P.slowT <= 0.2) {
             SFX.play('splat');
             var mc = o.zone === 'beach' ? '#BFF0FF' : o.zone === 'volcano' ? '#3B2440' : '#7A4E26';
@@ -4610,7 +4938,7 @@ var OBSART = (function () {
     var moving = mode === 'bonus' ? (keys.left !== keys.right) : true;
     JAM.draw(ctx, heroImg(), P.x, baseY, {
       phase: P.phase, air: !P.onGround, vy: P.vy, lift: baseY - P.y,
-      squash: P.squash, spin: P.spin, shoot: P.shootT > 0, power: power > 0, t: t,
+      squash: P.squash, spin: P.spin, lean: P.slipT > 0 && P.onGround && state === 'play' ? -0.12 + Math.sin(t * 18) * 0.05 : 0, shoot: P.shootT > 0, power: power > 0, t: t,
       outfit: wal(current).outfit, ride: riding(), roar: P.roarT > 0, face: P.face, idle: P.onGround && !moving
     });
     ctx.globalAlpha = 1;
