@@ -3104,6 +3104,10 @@ var OBSART = (function () {
   function heroImg() { return HEROES[heroId].img; }
 
   var H = 500, W = 800, scale = 1, dpr = 1;
+  // Keep the full-quality path on capable devices; Fire/low-memory browsers draw fewer pixels.
+  var lowPowerCanvas = /(?:KFTUWI|KF[A-Z0-9]{4,}|Silk\/)/i.test(navigator.userAgent) ||
+    (typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 3);
+  var canvasDprCap = lowPowerCanvas ? 1.25 : 2;
   var GROUND = 384;
   var POWER_TIME = 9, powerMax = 9;
   var PORTAL_EVERY = 20, REX_COOL = 6, BONUS_TIME = 30;
@@ -3112,7 +3116,7 @@ var OBSART = (function () {
 
   function resize() {
     var r = stage.getBoundingClientRect();
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    dpr = Math.min(window.devicePixelRatio || 1, canvasDprCap);
     canvas.width = Math.max(1, Math.round(r.width * dpr));
     canvas.height = Math.max(1, Math.round(r.height * dpr));
     scale = r.height / H;
@@ -4845,12 +4849,16 @@ var OBSART = (function () {
     else if (zoneFade < 1 && prevZoneKey) {
       sceneOf(prevZoneKey).draw(ctx, W, H, GROUND, dist, t);
       if (!fadeCanvas) fadeCanvas = document.createElement('canvas');
-      if (fadeCanvas.width !== canvas.width || fadeCanvas.height !== canvas.height) { fadeCanvas.width = canvas.width; fadeCanvas.height = canvas.height; }
+      // Only the incoming scene is rendered to the secondary canvas during a fade.
+      var fadeQuality = lowPowerCanvas ? 0.8 : 1;
+      var fadeW = Math.max(1, Math.round(canvas.width * fadeQuality));
+      var fadeH = Math.max(1, Math.round(canvas.height * fadeQuality));
+      if (fadeCanvas.width !== fadeW || fadeCanvas.height !== fadeH) { fadeCanvas.width = fadeW; fadeCanvas.height = fadeH; }
       var fc = fadeCanvas.getContext('2d');
-      fc.setTransform(1, 0, 0, 1, 0, 0); fc.clearRect(0, 0, fadeCanvas.width, fadeCanvas.height);
-      fc.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
+      fc.setTransform(1, 0, 0, 1, 0, 0); fc.clearRect(0, 0, fadeW, fadeH);
+      fc.setTransform(scale * dpr * fadeQuality, 0, 0, scale * dpr * fadeQuality, 0, 0);
       sceneOf(zoneKey).draw(fc, W, H, GROUND, dist, t);
-      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = zoneFade; ctx.drawImage(fadeCanvas, 0, 0); ctx.restore();
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = zoneFade; ctx.drawImage(fadeCanvas, 0, 0, canvas.width, canvas.height); ctx.restore();
     } else sceneOf(zoneKey).draw(ctx, W, H, GROUND, dist, t);
     if (!(mode === 'bonus' && B)) timeOfDay(true);
     if (speedLines.length) {
@@ -5127,16 +5135,18 @@ var OBSART = (function () {
   }
 
   reset();
-  var last = performance.now();
+  var last = performance.now(), lastDeployCheck = 0;
   function frame(now) {
     var dt = Math.min(0.033, (now - last) / 1000);
     last = now;
-    renderDeploy(false);
+    // Power-up button states need timely updates, but not a DOM check on every frame.
+    if (now - lastDeployCheck >= 100) { renderDeploy(false); lastDeployCheck = now; }
     var playingNow = state === 'play' || state === 'paused';
     if (document.body.classList.contains('playing') !== playingNow) document.body.classList.toggle('playing', playingNow);
     if (freeze > 0) freeze -= dt;
     else if (state !== 'paused') update(dt);
-    draw();
+    // Preserve the last scene under the pause overlay rather than repainting it continuously.
+    if (state !== 'paused') draw();
     requestAnimationFrame(frame);
   }
   resize();
