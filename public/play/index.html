@@ -172,7 +172,8 @@ a.homebtn:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px;
   touch-action: manipulation;
   box-sizing: border-box;
 }
-canvas { display: block; width: 100%; height: 100%; cursor: pointer; }
+/* Keep finger movement on the play surface from becoming a browser pan/zoom. */
+canvas { display: block; width: 100%; height: 100%; cursor: pointer; touch-action: none; }
 .power {
   position: absolute;
   top: 14px;
@@ -3107,9 +3108,7 @@ var OBSART = (function () {
   // Keep the full-quality path on capable devices; Fire/low-memory browsers draw fewer pixels.
   var lowPowerCanvas = /(?:KFTUWI|KF[A-Z0-9]{4,}|Silk\/)/i.test(navigator.userAgent) ||
     (typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 3);
-  // Only low-memory devices adapt render resolution; game-space dimensions stay unchanged.
-  // ?quality=high disables adaptation for a direct visual/performance comparison.
-  var autoCanvasQuality = lowPowerCanvas && new URLSearchParams(location.search).get('quality') !== 'high';
+  // Keep resolution fixed during play: reallocating the canvas can stall and flash.
   var canvasDprCap = lowPowerCanvas ? 1.25 : 2;
   var GROUND = 384;
   var POWER_TIME = 9, powerMax = 9;
@@ -3120,12 +3119,18 @@ var OBSART = (function () {
   function resize() {
     var r = stage.getBoundingClientRect();
     dpr = Math.min(window.devicePixelRatio || 1, canvasDprCap);
-    canvas.width = Math.max(1, Math.round(r.width * dpr));
-    canvas.height = Math.max(1, Math.round(r.height * dpr));
+    var width = Math.max(1, Math.round(r.width * dpr));
+    var height = Math.max(1, Math.round(r.height * dpr));
+    var changed = canvas.width !== width || canvas.height !== height;
+    // Assigning even the same dimensions clears the canvas and resets its context.
+    if (canvas.width !== width) canvas.width = width;
+    if (canvas.height !== height) canvas.height = height;
     scale = r.height / H;
     W = r.width / scale;
+    return changed;
   }
-  window.addEventListener('resize', resize);
+  var resizePending = true;
+  window.addEventListener('resize', function () { resizePending = true; });
 
   // ---------- players and saving ----------
   // The five family names keep their usual spelling; anyone else is saved under the name they type.
@@ -5188,44 +5193,13 @@ var OBSART = (function () {
 
   reset();
   var last = performance.now(), lastDeployCheck = 0;
-  var qualityWindowStart = 0, qualityFrames = 0, qualitySlowWindows = 0, qualityFastWindows = 0;
-  function adaptCanvasQuality(now, gap) {
-    // Ignore menu screens, pauses, background tabs and major scheduling interruptions.
-    if (!autoCanvasQuality || document.hidden || state !== 'play' || gap > 250) {
-      qualityWindowStart = 0; qualityFrames = qualitySlowWindows = qualityFastWindows = 0;
-      return;
-    }
-    if (!qualityWindowStart) { qualityWindowStart = now; qualityFrames = 0; }
-    qualityFrames++;
-    var elapsed = now - qualityWindowStart;
-    if (elapsed < 3000) return;
-    var fps = qualityFrames * 1000 / elapsed;
-    qualityWindowStart = now; qualityFrames = 0;
-    if (canvasDprCap > 1 && fps < 45) {
-      qualitySlowWindows++;
-      qualityFastWindows = 0;
-      if (qualitySlowWindows >= 2) {
-        canvasDprCap = 1;
-        qualitySlowWindows = qualityFastWindows = 0;
-        resize();
-      }
-    } else if (canvasDprCap < 1.25 && fps > 56) {
-      qualityFastWindows++;
-      qualitySlowWindows = 0;
-      if (qualityFastWindows >= 4) {
-        canvasDprCap = 1.25;
-        qualitySlowWindows = qualityFastWindows = 0;
-        resize();
-      }
-    } else {
-      qualitySlowWindows = qualityFastWindows = 0;
-    }
-  }
   function frame(now) {
     var gap = now - last;
     var dt = Math.min(0.033, gap / 1000);
     last = now;
-    adaptCanvasQuality(now, gap);
+    // Resize and repaint in the same frame, including underneath the pause panel.
+    var resized = false;
+    if (resizePending) { resized = resize(); resizePending = false; }
     // Power-up button states need timely updates, but not a DOM check on every frame.
     if (now - lastDeployCheck >= 100) { renderDeploy(false); lastDeployCheck = now; }
     var playingNow = state === 'play' || state === 'paused';
@@ -5234,13 +5208,12 @@ var OBSART = (function () {
     if (freeze > 0) freeze -= dt;
     else if (state !== 'paused') update(dt);
     var updateMs = updateStart !== null ? performance.now() - updateStart : 0;
-    var drawStart = perfOverlay && state !== 'paused' ? performance.now() : null;
+    var drawStart = perfOverlay && (state !== 'paused' || resized) ? performance.now() : null;
     // Preserve the last scene under the pause overlay rather than repainting it continuously.
-    if (state !== 'paused') draw();
+    if (state !== 'paused' || resized) draw();
     if (perfOverlay) perfOverlay.record(now, updateMs, drawStart !== null ? performance.now() - drawStart : 0);
     requestAnimationFrame(frame);
   }
-  resize();
   requestAnimationFrame(frame);
 
   // test hook for screenshots only
