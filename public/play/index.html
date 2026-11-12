@@ -3107,6 +3107,9 @@ var OBSART = (function () {
   // Keep the full-quality path on capable devices; Fire/low-memory browsers draw fewer pixels.
   var lowPowerCanvas = /(?:KFTUWI|KF[A-Z0-9]{4,}|Silk\/)/i.test(navigator.userAgent) ||
     (typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 3);
+  // Only low-memory devices adapt render resolution; game-space dimensions stay unchanged.
+  // ?quality=high disables adaptation for a direct visual/performance comparison.
+  var autoCanvasQuality = lowPowerCanvas && new URLSearchParams(location.search).get('quality') !== 'high';
   var canvasDprCap = lowPowerCanvas ? 1.25 : 2;
   var GROUND = 384;
   var POWER_TIME = 9, powerMax = 9;
@@ -5185,9 +5188,44 @@ var OBSART = (function () {
 
   reset();
   var last = performance.now(), lastDeployCheck = 0;
+  var qualityWindowStart = 0, qualityFrames = 0, qualitySlowWindows = 0, qualityFastWindows = 0;
+  function adaptCanvasQuality(now, gap) {
+    // Ignore menu screens, pauses, background tabs and major scheduling interruptions.
+    if (!autoCanvasQuality || document.hidden || state !== 'play' || gap > 250) {
+      qualityWindowStart = 0; qualityFrames = qualitySlowWindows = qualityFastWindows = 0;
+      return;
+    }
+    if (!qualityWindowStart) { qualityWindowStart = now; qualityFrames = 0; }
+    qualityFrames++;
+    var elapsed = now - qualityWindowStart;
+    if (elapsed < 3000) return;
+    var fps = qualityFrames * 1000 / elapsed;
+    qualityWindowStart = now; qualityFrames = 0;
+    if (canvasDprCap > 1 && fps < 45) {
+      qualitySlowWindows++;
+      qualityFastWindows = 0;
+      if (qualitySlowWindows >= 2) {
+        canvasDprCap = 1;
+        qualitySlowWindows = qualityFastWindows = 0;
+        resize();
+      }
+    } else if (canvasDprCap < 1.25 && fps > 56) {
+      qualityFastWindows++;
+      qualitySlowWindows = 0;
+      if (qualityFastWindows >= 4) {
+        canvasDprCap = 1.25;
+        qualitySlowWindows = qualityFastWindows = 0;
+        resize();
+      }
+    } else {
+      qualitySlowWindows = qualityFastWindows = 0;
+    }
+  }
   function frame(now) {
-    var dt = Math.min(0.033, (now - last) / 1000);
+    var gap = now - last;
+    var dt = Math.min(0.033, gap / 1000);
     last = now;
+    adaptCanvasQuality(now, gap);
     // Power-up button states need timely updates, but not a DOM check on every frame.
     if (now - lastDeployCheck >= 100) { renderDeploy(false); lastDeployCheck = now; }
     var playingNow = state === 'play' || state === 'paused';
