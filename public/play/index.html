@@ -5236,5 +5236,15 @@ var OBSART = (function () {
 })();
 </script>
 
+
+<script>
+// Load on-device diagnostics only when explicitly requested.
+if (new URLSearchParams(location.search).get('devInput') === '1') {
+  var inputDiagnosticsScript = document.createElement('script');
+  inputDiagnosticsScript.src = '/play/input-diagnostics.js?v=fire-input-1';
+  document.body.appendChild(inputDiagnosticsScript);
+}
+</script>
+
 </body>
 </html>
