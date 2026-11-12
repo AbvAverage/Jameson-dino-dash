@@ -3607,7 +3607,8 @@ var OBSART = (function () {
     if (P.jumps < 2) {
       if (P.jumps === 1) { P.spinT = 0.001; puff(P.x, P.y, 5, 24); SFX.play('double'); P.trailT = 0.5; ring(P.x, P.y - 6, 'rgba(255,255,255,0.9)', 46); }
       else { puff(P.x, GROUND, 6, 30); SFX.play('jump'); }
-      P.vy = P.jumps === 0 ? -790 : -660;
+      // A rapid second tap must never slow an already faster upward jump.
+      P.vy = P.jumps === 0 ? -790 : Math.min(P.vy, -660);
       P.jumps++;
       P.onGround = false;
     }
@@ -3872,7 +3873,20 @@ var OBSART = (function () {
     startPanel.hidden = false;
     setTimeout(function () { nameInput.focus(); nameInput.select(); }, 30);
   });
-  canvas.addEventListener('pointerdown', function (e) { e.preventDefault(); jump(); });
+  // Handle physical touch starts directly, once per new contact. Ignore the
+  // accompanying touch pointer event so a single tap cannot spend both jumps.
+  function bindJumpInput(el) {
+    var nativeTouch = 'ontouchstart' in window;
+    if (nativeTouch) el.addEventListener('touchstart', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      for (var i = 0; i < e.changedTouches.length; i++) jump();
+    }, { passive: false });
+    el.addEventListener('pointerdown', function (e) {
+      if (nativeTouch && e.pointerType === 'touch') return;
+      e.preventDefault(); e.stopPropagation(); jump();
+    });
+  }
+  bindJumpInput(canvas);
   blastBtn.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); blast(); });
   blastBtn.addEventListener('click', function (e) { if (e.detail === 0) blast(); });
   window.addEventListener('keydown', function (e) {
@@ -4561,7 +4575,7 @@ var OBSART = (function () {
     el.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   }
   holdBtn(leftBtn, 'left'); holdBtn(rightBtn, 'right');
-  jumpBtn.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); jump(); });
+  bindJumpInput(jumpBtn);
   jumpBtn.addEventListener('click', function (e) { if (e.detail === 0) jump(); });
   window.addEventListener('keyup', function (e) {
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
