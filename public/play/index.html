@@ -5134,6 +5134,55 @@ var OBSART = (function () {
     ctx.restore();
   }
 
+  // Development diagnostics only: opt in with /play/?devPerf=1; never saved.
+  // No extra rAF loop, timers, samples or DOM nodes on the default path.
+  function createPerfOverlay() {
+    var panel = document.createElement('pre');
+    panel.id = 'devPerf';
+    panel.setAttribute('aria-label', 'Development performance diagnostics');
+    panel.style.cssText = 'position:fixed;right:8px;top:8px;z-index:10000;margin:0;padding:8px;' +
+      'max-width:calc(100vw - 32px);box-sizing:border-box;white-space:pre-wrap;pointer-events:none;' +
+      'background:rgba(0,0,0,.82);color:#fff;font:12px/1.35 monospace;text-align:left;';
+    panel.textContent = 'DEV PERF · waiting for frames';
+    document.body.appendChild(panel);
+    var previous = null, count = 0, elapsed = 0, maximum = 0;
+    var updateTotal = 0, drawTotal = 0, long33 = 0, long50 = 0;
+    function clearWindow() {
+      count = 0; elapsed = 0; maximum = 0; updateTotal = 0; drawTotal = 0;
+    }
+    // A suspended/background tab is not a long game frame. Keep foreground totals.
+    document.addEventListener('visibilitychange', function () {
+      previous = null; clearWindow();
+    });
+    return {
+      record: function (now, updateMs, drawMs) {
+        if (document.hidden) { previous = null; return; }
+        if (previous === null) { previous = now; return; }
+        var delta = now - previous;
+        previous = now;
+        if (delta <= 0) return;
+        count++; elapsed += delta; maximum = Math.max(maximum, delta);
+        updateTotal += updateMs; drawTotal += drawMs;
+        if (delta > 33.33) long33++;
+        if (delta > 50) long50++;
+        // Bound diagnostic DOM/layout work to twice a second. No sample arrays.
+        if (elapsed < 500) return;
+        panel.textContent = 'DEV PERF · ' + state + ' / ' + mode + '\n' +
+          'rAF FPS ' + (1000 * count / elapsed).toFixed(1) + '\n' +
+          'Frame ms avg ' + (elapsed / count).toFixed(2) + ' max ' + maximum.toFixed(2) + '\n' +
+          'Update ms avg ' + (updateTotal / count).toFixed(2) + '\n' +
+          'Draw JS ms avg ' + (drawTotal / count).toFixed(2) + '\n' +
+          'Long frames >33.33ms ' + long33 + '  >50ms ' + long50 + '\n' +
+          'Canvas px ' + canvas.width + ' × ' + canvas.height + '\n' +
+          'DPR device ' + (window.devicePixelRatio || 1) + ' / canvas ' + dpr + '\n' +
+          '0.5s windows; long totals since load (foreground)\n' +
+          'Skipped update/draw = 0; JS draw excludes GPU';
+        clearWindow();
+      }
+    };
+  }
+  var perfOverlay = new URLSearchParams(window.location.search).get('devPerf') === '1' ? createPerfOverlay() : null;
+
   reset();
   var last = performance.now(), lastDeployCheck = 0;
   function frame(now) {
@@ -5143,10 +5192,14 @@ var OBSART = (function () {
     if (now - lastDeployCheck >= 100) { renderDeploy(false); lastDeployCheck = now; }
     var playingNow = state === 'play' || state === 'paused';
     if (document.body.classList.contains('playing') !== playingNow) document.body.classList.toggle('playing', playingNow);
+    var updateStart = perfOverlay && freeze <= 0 && state !== 'paused' ? performance.now() : null;
     if (freeze > 0) freeze -= dt;
     else if (state !== 'paused') update(dt);
+    var updateMs = updateStart !== null ? performance.now() - updateStart : 0;
+    var drawStart = perfOverlay && state !== 'paused' ? performance.now() : null;
     // Preserve the last scene under the pause overlay rather than repainting it continuously.
     if (state !== 'paused') draw();
+    if (perfOverlay) perfOverlay.record(now, updateMs, drawStart !== null ? performance.now() - drawStart : 0);
     requestAnimationFrame(frame);
   }
   resize();
